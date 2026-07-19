@@ -587,82 +587,76 @@ export const seedIzdiharProject = () => {
   localStorage.setItem('snaglist_categories', JSON.stringify(categoriesList));
 
   // 2. Add Project Izdihar
-  const projectsList: Project[] = JSON.parse(localStorage.getItem('snaglist_projects') || '[]');
-  if (!projectsList.some(p => p.id === projectId)) {
-    projectsList.push({
-      id: projectId,
-      company_id: DEFAULT_ORG_ID,
-      name: 'Izdihar Villa Project',
-      description: 'Premium Residential Compound featuring 30 luxury villas (120 units total) and comprehensive common facilities.',
-      owner: 'Default Organization',
-      contractor: 'Saudi Construction Co.',
-      consultant: 'Khatib & Alami',
-      engineer: 'Eng. Ahmed',
-      completion_rate: 72.0,
-      created_at: new Date().toISOString(),
-      project_type: 'villa',
-      level_structure: ['Villa', 'Unit', 'Room/Area']
-    });
-    localStorage.setItem('snaglist_projects', JSON.stringify(projectsList));
-  }
+  const projectsList: Project[] = (JSON.parse(localStorage.getItem('snaglist_projects') || '[]') || []).filter((p: any) => p && p.id !== projectId);
+  projectsList.push({
+    id: projectId,
+    company_id: DEFAULT_ORG_ID,
+    name: 'Izdihar Villa Project',
+    description: 'Premium Residential Compound featuring 30 luxury villas (120 units total) and comprehensive common facilities.',
+    owner: 'Default Organization',
+    contractor: 'Saudi Construction Co.',
+    consultant: 'Khatib & Alami',
+    engineer: 'Eng. Ahmed',
+    completion_rate: 72.0,
+    created_at: new Date().toISOString(),
+    project_type: 'villa',
+    level_structure: ['Villa', 'Unit', 'Room/Area']
+  });
+  localStorage.setItem('snaglist_projects', JSON.stringify(projectsList));
 
   // 3. Generate Master Inspection Templates (350-500 checkpoints)
-  const masterTemplates: InspectionTemplate[] = JSON.parse(localStorage.getItem('snaglist_templates') || '[]');
-  if (!masterTemplates.some(t => t.id.startsWith('tpl-izd-'))) {
-    const roomsForChecklists = [
-      'Entrance', 'Hall', 'Living Room', 'Dining Room', 'Kitchen', 
-      'Bathroom', 'Master Bedroom', 'Bedroom 2', 'Bedroom 3', 
-      'Maid Room', 'Store', 'Laundry', 'Balcony', 'Staircase', 
-      'Corridor', 'Electrical Panel', 'Mechanical Area', 'Roof', 'External Elevation'
-    ];
+  const masterTemplates: InspectionTemplate[] = (JSON.parse(localStorage.getItem('snaglist_templates') || '[]') || []).filter((t: any) => t && !t.id.startsWith('tpl-izd-'));
+  
+  const roomsForChecklists = [
+    'Entrance', 'Hall', 'Living Room', 'Dining Room', 'Kitchen', 
+    'Bathroom', 'Master Bedroom', 'Bedroom 2', 'Bedroom 3', 
+    'Maid Room', 'Store', 'Laundry', 'Balcony', 'Staircase', 
+    'Corridor', 'Electrical Panel', 'Mechanical Area', 'Roof', 'External Elevation'
+  ];
 
-    const checksByCat = [
-      { cat: 'Painting', check: 'Check wall paint for roller marks, touch-ups and uniformity' },
-      { cat: 'Painting', check: 'Inspect ceiling paint finish for patches or peeling' },
-      { cat: 'Gypsum Ceiling', check: 'Check gypsum board ceiling joints for tape hairline cracks' },
-      { cat: 'Gypsum Ceiling', check: 'Verify gypsum ceiling level and drop alignment' },
-      { cat: 'Lighting', check: 'Test light fixture operations and verify lux levels' },
-      { cat: 'Lighting', check: 'Check switches alignment, level and gaps' },
-      { cat: 'Electrical', check: 'Verify wall sockets terminal polarity and earth connection' },
-      { cat: 'Electrical', check: 'Check circuit breakers labeling and DB dressing safety' },
-      { cat: 'Low Current', check: 'Test TV outlet signal level and coax termination' },
-      { cat: 'Low Current', check: 'Test RJ45 internet port continuity and speed' },
-      { cat: 'Floor Tiles', check: 'Verify floor tile slopes towards drainage floor traps' },
-      { cat: 'Floor Tiles', check: 'Check floor tiles lippage and grout joint widths' },
-      { cat: 'Wall Tiles', check: 'Verify wall tile verticality, plumb and grout joint consistency' },
-      { cat: 'Doors', check: 'Check timber door frame anchors, paint and architrave joints' },
-      { cat: 'Doors', check: 'Verify door lock latches and key cylinder operation smoothness' },
-      { cat: 'Windows', check: 'Inspect aluminium window sliding tracks and locking handles' },
-      { cat: 'Glass', check: 'Check window double-glazed glass panes for deep cleaning scratches' },
-      { cat: 'Glass', check: 'Verify shower glass panel bottom seals for water leaks' },
-      { cat: 'Waterproofing', check: 'Conduct wet area floor waterproofing pond testing' },
-      { cat: 'Sanitary Fixtures', check: 'Inspect wash basin mixers for hot/cold indicator labels' },
-      { cat: 'Plumbing', check: 'Test under-sink flexi hoses for high water pressure leaks' },
-      { cat: 'Cleaning', check: 'Verify general cleanup, removing cement grout stains and dust' }
-    ];
+  const checksByCat = [
+    { cat: 'Painting', check: 'Check wall paint for roller marks, touch-ups and uniformity' },
+    { cat: 'Painting', check: 'Inspect ceiling paint finish for patches or peeling' },
+    { cat: 'Gypsum Ceiling', check: 'Check gypsum board ceiling joints for tape hairline cracks' },
+    { cat: 'Gypsum Ceiling', check: 'Verify gypsum ceiling level and drop alignment' },
+    { cat: 'Lighting', check: 'Test light fixture operations and verify lux levels' },
+    { cat: 'Lighting', check: 'Check switches alignment, level and gaps' },
+    { cat: 'Electrical', check: 'Verify wall sockets terminal polarity and earth connection' },
+    { cat: 'Electrical', check: 'Check circuit breakers labeling and DB dressing safety' },
+    { cat: 'Low Current', check: 'Test TV outlet signal level and coax termination' },
+    { cat: 'Low Current', check: 'Test RJ45 internet port continuity and speed' },
+    { cat: 'Floor Tiles', check: 'Verify floor tile slopes towards drainage floor traps' },
+    { cat: 'Floor Tiles', check: 'Check floor tiles lippage and grout joint widths' },
+    { cat: 'Wall Tiles', check: 'Verify wall tile verticality, plumb and grout joint consistency' },
+    { cat: 'Doors', check: 'Check timber door frame anchors, paint and architrave joints' },
+    { cat: 'Doors', check: 'Verify door lock latches and key cylinder operation smoothness' },
+    { cat: 'Windows', check: 'Inspect aluminium window sliding tracks and locking handles' },
+    { cat: 'Glass', check: 'Check window double-glazed glass panes for deep cleaning scratches' },
+    { cat: 'Glass', check: 'Verify shower glass panel bottom seals for water leaks' },
+    { cat: 'Waterproofing', check: 'Conduct wet area floor waterproofing pond testing' },
+    { cat: 'Sanitary Fixtures', check: 'Inspect wash basin mixers for hot/cold indicator labels' },
+    { cat: 'Plumbing', check: 'Test under-sink flexi hoses for high water pressure leaks' },
+    { cat: 'Cleaning', check: 'Verify general cleanup, removing cement grout stains and dust' }
+  ];
 
-    let tCounter = 1;
-    const newTemplates: InspectionTemplate[] = [];
-    roomsForChecklists.forEach((rName) => {
-      checksByCat.forEach((chk) => {
-        newTemplates.push({
-          id: `tpl-izd-${tCounter++}`,
-          company_id: DEFAULT_ORG_ID,
-          category_name: chk.cat,
-          audit_item: `${chk.check} in ${rName}`,
-          is_active: true,
-          created_at: new Date().toISOString()
-        });
+  let tCounter = 1;
+  const newTemplates: InspectionTemplate[] = [];
+  roomsForChecklists.forEach((rName) => {
+    checksByCat.forEach((chk) => {
+      newTemplates.push({
+        id: `tpl-izd-${tCounter++}`,
+        company_id: DEFAULT_ORG_ID,
+        category_name: chk.cat,
+        audit_item: `${chk.check} in ${rName}`,
+        is_active: true,
+        created_at: new Date().toISOString()
       });
     });
-    localStorage.setItem('snaglist_templates', JSON.stringify([...masterTemplates, ...newTemplates]));
-  }
+  });
+  localStorage.setItem('snaglist_templates', JSON.stringify([...masterTemplates, ...newTemplates]));
 
   // 4. Generate project nodes tree
-  const nodesList: ProjectNode[] = JSON.parse(localStorage.getItem('snaglist_nodes') || '[]');
-  if (nodesList.some(n => n.project_id === projectId)) {
-    return;
-  }
+  const nodesList: ProjectNode[] = (JSON.parse(localStorage.getItem('snaglist_nodes') || '[]') || []).filter((n: any) => n && n.project_id !== projectId);
 
   const newNodes: ProjectNode[] = [];
 
@@ -765,8 +759,8 @@ export const seedIzdiharProject = () => {
   localStorage.setItem('snaglist_nodes', JSON.stringify([...nodesList, ...newNodes]));
 
   // 5. Generate ~5,700 realistic snag items procedurally
-  const snagsList: InspectionItem[] = JSON.parse(localStorage.getItem('snaglist_items') || '[]');
-  const commentsList: InspectionComment[] = JSON.parse(localStorage.getItem('snaglist_comments') || '[]');
+  const snagsList: InspectionItem[] = (JSON.parse(localStorage.getItem('snaglist_items') || '[]') || []).filter((s: any) => s && s.id !== 'snag-izd-' && !s.id.startsWith('snag-izd-') && s.villa_id !== 'node-izd-common' && !String(s.location_node_id).startsWith('node-izd-'));
+  const commentsList: InspectionComment[] = (JSON.parse(localStorage.getItem('snaglist_comments') || '[]') || []).filter((c: any) => c && !c.id.startsWith('comm-izd-'));
   
   const itemsToAdd: InspectionItem[] = [];
   const commentsToAdd: InspectionComment[] = [];
@@ -1051,10 +1045,10 @@ export const initializeMockDatabase = () => {
   }
 
   // Trigger Izdihar Project seeding if not present yet
-  const isIzdiharSeeded = localStorage.getItem('snaglist_seeded_izdihar');
+  const isIzdiharSeeded = localStorage.getItem('snaglist_seeded_izdihar_v2');
   if (isSeeded && !isIzdiharSeeded) {
     seedIzdiharProject();
-    localStorage.setItem('snaglist_seeded_izdihar', 'true');
+    localStorage.setItem('snaglist_seeded_izdihar_v2', 'true');
   }
 
   if (isSeeded) return;
@@ -1364,7 +1358,7 @@ export const initializeMockDatabase = () => {
   
   // Seed Izdihar Project
   seedIzdiharProject();
-  localStorage.setItem('snaglist_seeded_izdihar', 'true');
+  localStorage.setItem('snaglist_seeded_izdihar_v2', 'true');
 };
 
 const recomputeRates = (villas: Villa[], items: InspectionItem[], projects: Project[]) => {
