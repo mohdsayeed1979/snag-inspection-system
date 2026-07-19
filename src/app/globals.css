@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F7F9FC;
+  --foreground: #1E293B;
+  
+  --primary: #6A89A7;
+  --primary-foreground: #FFFFFF;
+  
+  --secondary: #BDDDFC;
+  --secondary-foreground: #1E293B;
+  
+  --accent: #88BDF2;
+  --accent-foreground: #1E293B;
+  
+  --dark: #384959;
+  --dark-foreground: #F7F9FC;
+  
+  --success: #16A34A;
+  --success-foreground: #FFFFFF;
+  
+  --warning: #F59E0B;
+  --warning-foreground: #1E293B;
+  
+  --danger: #DC2626;
+  --danger-foreground: #FFFFFF;
+  
+  --card: #FFFFFF;
+  --card-foreground: #1E293B;
+  
+  --muted: #E2E8F0;
+  --muted-foreground: #64748B;
+  
+  --border: #E2E8F0;
+  --input: #E2E8F0;
+  --ring: #6A89A7;
+}
+
+.dark {
+  --background: #18222F;
+  --foreground: #F7F9FC;
+  
+  --primary: #6A89A7;
+  --primary-foreground: #FFFFFF;
+  
+  --secondary: #384959;
+  --secondary-foreground: #BDDDFC;
+  
+  --accent: #88BDF2;
+  --accent-foreground: #18222F;
+  
+  --dark: #BDDDFC;
+  --dark-foreground: #18222F;
+  
+  --success: #16A34A;
+  --success-foreground: #FFFFFF;
+  
+  --warning: #F59E0B;
+  --warning-foreground: #18222F;
+  
+  --danger: #DC2626;
+  --danger-foreground: #FFFFFF;
+  
+  --card: #222D3A;
+  --card-foreground: #F7F9FC;
+  
+  --muted: #2E3D4D;
+  --muted-foreground: #94A3B8;
+  
+  --border: #2E3D4D;
+  --input: #2E3D4D;
+  --ring: #88BDF2;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-dark: var(--dark);
+  --color-dark-foreground: var(--dark-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  
+  --radius-xl: 12px;
+  --radius-lg: 10px;
+  --radius-md: 8px;
+  --radius-sm: 4px;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Custom styled scrollbars for Notion/Linear look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
