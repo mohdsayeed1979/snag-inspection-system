@@ -38,17 +38,37 @@ INSERT INTO public.inspection_templates (category_name, audit_item, is_active) V
 ('Flooring & Tiling', 'Verify floor levels and slope in wet areas towards gully trap', true)
 ON CONFLICT (category_name, audit_item) DO NOTHING;
 
--- 3. Seed Mock Profiles (We assume users are inserted via auth system or manual inserts)
--- Since UUIDs are required, we'll create standard mock profile UUIDs for local/development use.
--- For local storage bypass/mock, we can define these IDs.
-INSERT INTO public.profiles (id, email, full_name, role, phone) VALUES
-('d1111111-1111-1111-1111-111111111111', 'admin@villaqc.com', 'Super Admin User', 'super_admin', '+966500000001'),
-('d2222222-2222-2222-2222-222222222222', 'pm@villaqc.com', 'Eng. Ahmed (PM)', 'project_manager', '+966500000002'),
-('d3333333-3333-3333-3333-333333333333', 'engineer@villaqc.com', 'Eng. Khalid (Site Engineer)', 'site_engineer', '+966500000003'),
-('d4444444-4444-4444-4444-444444444444', 'inspector@villaqc.com', 'Eng. Yousef (QA/QC)', 'qaqc_inspector', '+966500000004'),
-('d5555555-5555-5555-5555-555555555555', 'contractor@villaqc.com', 'Saudi Construction Co. (Contractor)', 'contractor', '+966500000005'),
-('d6666666-6666-6666-6666-666666666666', 'viewer@villaqc.com', 'Client Representative (Read Only)', 'read_only', '+966500000006')
-ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name, role = EXCLUDED.role;
+-- 3. Seed Mock Users into auth.users (which triggers profile creations in public.profiles)
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+INSERT INTO auth.users (
+  id,
+  instance_id,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at,
+  role,
+  aud
+) VALUES
+('d1111111-1111-1111-1111-111111111111', '00000000-0000-0000-0000-000000000000', 'admin@villaqc.com', crypt('password123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Super Admin User","role":"super_admin"}', now(), now(), 'authenticated', 'authenticated'),
+('d2222222-2222-2222-2222-222222222222', '00000000-0000-0000-0000-000000000000', 'pm@villaqc.com', crypt('password123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Eng. Ahmed (PM)","role":"project_manager"}', now(), now(), 'authenticated', 'authenticated'),
+('d3333333-3333-3333-3333-333333333333', '00000000-0000-0000-0000-000000000000', 'engineer@villaqc.com', crypt('password123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Eng. Khalid (Site Engineer)","role":"site_engineer"}', now(), now(), 'authenticated', 'authenticated'),
+('d4444444-4444-4444-4444-444444444444', '00000000-0000-0000-0000-000000000000', 'inspector@villaqc.com', crypt('password123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Eng. Yousef (QA/QC)","role":"qaqc_inspector"}', now(), now(), 'authenticated', 'authenticated'),
+('d5555555-5555-5555-5555-555555555555', '00000000-0000-0000-0000-000000000000', 'contractor@villaqc.com', crypt('password123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Saudi Construction Co. (Contractor)","role":"contractor"}', now(), now(), 'authenticated', 'authenticated'),
+('d6666666-6666-6666-6666-666666666666', '00000000-0000-0000-0000-000000000000', 'viewer@villaqc.com', crypt('password123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Client Representative (Read Only)","role":"read_only"}', now(), now(), 'authenticated', 'authenticated')
+ON CONFLICT (id) DO NOTHING;
+
+-- Update phones in public.profiles (since trigger copies user metadata)
+UPDATE public.profiles SET phone = '+966500000001' WHERE email = 'admin@villaqc.com';
+UPDATE public.profiles SET phone = '+966500000002' WHERE email = 'pm@villaqc.com';
+UPDATE public.profiles SET phone = '+966500000003' WHERE email = 'engineer@villaqc.com';
+UPDATE public.profiles SET phone = '+966500000004' WHERE email = 'inspector@villaqc.com';
+UPDATE public.profiles SET phone = '+966500000005' WHERE email = 'contractor@villaqc.com';
+UPDATE public.profiles SET phone = '+966500000006' WHERE email = 'viewer@villaqc.com';
 
 -- 4. Seed Project
 INSERT INTO public.projects (id, name, description, owner, contractor, consultant, engineer) VALUES
