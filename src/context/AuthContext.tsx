@@ -51,26 +51,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const profilesJson = localStorage.getItem('snaglist_profiles');
     
     let loadedProfiles = SEED_PROFILES;
-    if (profilesJson) {
+    if (profilesJson && profilesJson !== 'null' && profilesJson !== 'undefined') {
       try {
-        loadedProfiles = JSON.parse(profilesJson);
-        setAllProfiles(loadedProfiles);
+        const parsed = JSON.parse(profilesJson);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          loadedProfiles = parsed;
+          setAllProfiles(loadedProfiles);
+        }
       } catch (e) {
         console.error('Failed to parse profiles', e);
       }
     }
 
     let activeUser: Profile | null = null;
-    if (storedUserEmail) {
-      const found = loadedProfiles.find(p => p.email === storedUserEmail);
+    const emailToFind = storedUserEmail && storedUserEmail !== 'null' && storedUserEmail !== 'undefined' ? storedUserEmail : null;
+    
+    if (emailToFind && Array.isArray(loadedProfiles)) {
+      const found = loadedProfiles.find(p => p && p.email === emailToFind);
       if (found) {
         activeUser = found;
       } else {
         activeUser = loadedProfiles[0] || SEED_PROFILES[0];
       }
-    } else {
-      const defaultUser = loadedProfiles.find(p => p.role === 'project_manager') || loadedProfiles[0] || SEED_PROFILES[0];
-      activeUser = defaultUser;
+    } else if (Array.isArray(loadedProfiles) && loadedProfiles.length > 0) {
+      const defaultUser = loadedProfiles.find(p => p && p.role === 'project_manager') || loadedProfiles[0];
+      activeUser = defaultUser || SEED_PROFILES[0];
       if (defaultUser) {
         localStorage.setItem('snaglist_current_user_email', defaultUser.email);
       }

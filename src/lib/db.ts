@@ -249,6 +249,21 @@ export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl!, supabaseAnonKey!)
   : null;
 
+
+// Helper to parse LocalStorage safely and guarantee an array return
+const safeParseList = <T = any>(key: string): T[] => {
+  if (typeof window === 'undefined') return [];
+  const val = localStorage.getItem(key);
+  if (!val || val === 'null' || val === 'undefined') return [];
+  try {
+    const parsed = JSON.parse(val);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error(`Failed to parse localStorage key: ${key}`, e);
+    return [];
+  }
+};
+
 // --- SEED SEPARATORS ---
 const DEFAULT_ORG_ID = 'c0000000-0000-0000-0000-000000000000';
 const COMPANY2_ID = 'co2-uuid-0000-0000-000000000000';
@@ -365,7 +380,7 @@ const runLegacyDatabaseMigration = () => {
 
   // 2. Profiles (inject company_id)
   const profilesStr = localStorage.getItem('snaglist_profiles');
-  if (profilesStr) {
+  if (profilesStr && profilesStr !== 'null' && profilesStr !== 'undefined') {
     try {
       const profiles = JSON.parse(profilesStr);
       const updated = profiles.map((p: any) => ({
@@ -380,7 +395,7 @@ const runLegacyDatabaseMigration = () => {
 
   // 3. Projects (inject company_id, project_type, level_structure)
   const projectsStr = localStorage.getItem('snaglist_projects');
-  if (projectsStr) {
+  if (projectsStr && projectsStr !== 'null' && projectsStr !== 'undefined') {
     try {
       const projects = JSON.parse(projectsStr);
       const updated = projects.map((p: any) => ({
@@ -398,7 +413,7 @@ const runLegacyDatabaseMigration = () => {
   // 4. Blocks (inject company_id) & project_nodes tree
   const blocksStr = localStorage.getItem('snaglist_blocks');
   const projectNodes: any[] = [];
-  if (blocksStr) {
+  if (blocksStr && blocksStr !== 'null' && blocksStr !== 'undefined') {
     try {
       const blocks = JSON.parse(blocksStr);
       const updated = blocks.map((b: any) => {
@@ -425,7 +440,7 @@ const runLegacyDatabaseMigration = () => {
 
   // 5. Villas (inject company_id) & project_nodes tree
   const villasStr = localStorage.getItem('snaglist_villas');
-  if (villasStr) {
+  if (villasStr && villasStr !== 'null' && villasStr !== 'undefined') {
     try {
       const villas = JSON.parse(villasStr);
       const updated = villas.map((v: any) => {
@@ -454,7 +469,7 @@ const runLegacyDatabaseMigration = () => {
 
   // 6. Categories
   const categoriesStr = localStorage.getItem('snaglist_categories');
-  if (categoriesStr) {
+  if (categoriesStr && categoriesStr !== 'null' && categoriesStr !== 'undefined') {
     try {
       const categories = JSON.parse(categoriesStr);
       const updated = categories.map((c: any) => ({
@@ -469,7 +484,7 @@ const runLegacyDatabaseMigration = () => {
 
   // 7. Templates
   const templatesStr = localStorage.getItem('snaglist_templates');
-  if (templatesStr) {
+  if (templatesStr && templatesStr !== 'null' && templatesStr !== 'undefined') {
     try {
       const templates = JSON.parse(templatesStr);
       const updated = templates.map((t: any) => ({
@@ -484,7 +499,7 @@ const runLegacyDatabaseMigration = () => {
 
   // 8. Items
   const itemsStr = localStorage.getItem('snaglist_items');
-  if (itemsStr) {
+  if (itemsStr && itemsStr !== 'null' && itemsStr !== 'undefined') {
     try {
       const items = JSON.parse(itemsStr);
       const updated = items.map((i: any) => ({
@@ -572,7 +587,7 @@ export const seedIzdiharProject = () => {
   const projectId = 'a0000000-0000-0000-0000-000000000002';
 
   // 1. Check/Add master categories
-  const categoriesList: InspectionCategory[] = JSON.parse(localStorage.getItem('snaglist_categories') || '[]');
+  const categoriesList: InspectionCategory[] = safeParseList('snaglist_categories');
   MASTER_CATEGORIES.forEach(mc => {
     if (!categoriesList.some(c => c.id === mc.id)) {
       categoriesList.push({
@@ -587,7 +602,7 @@ export const seedIzdiharProject = () => {
   localStorage.setItem('snaglist_categories', JSON.stringify(categoriesList));
 
   // 2. Add Project Izdihar
-  const projectsList: Project[] = (JSON.parse(localStorage.getItem('snaglist_projects') || '[]') || []).filter((p: any) => p && p.id !== projectId);
+  const projectsList: Project[] = (safeParseList('snaglist_projects') || []).filter((p: any) => p && p.id !== projectId);
   projectsList.unshift({
     id: projectId,
     company_id: DEFAULT_ORG_ID,
@@ -605,7 +620,7 @@ export const seedIzdiharProject = () => {
   localStorage.setItem('snaglist_projects', JSON.stringify(projectsList));
 
   // 3. Generate Master Inspection Templates (350-500 checkpoints)
-  const masterTemplates: InspectionTemplate[] = (JSON.parse(localStorage.getItem('snaglist_templates') || '[]') || []).filter((t: any) => t && !t.id.startsWith('tpl-izd-'));
+  const masterTemplates: InspectionTemplate[] = (safeParseList('snaglist_templates') || []).filter((t: any) => t && !t.id.startsWith('tpl-izd-'));
   
   const roomsForChecklists = [
     'Entrance', 'Hall', 'Living Room', 'Dining Room', 'Kitchen', 
@@ -656,7 +671,7 @@ export const seedIzdiharProject = () => {
   localStorage.setItem('snaglist_templates', JSON.stringify([...masterTemplates, ...newTemplates]));
 
   // 4. Generate project nodes tree
-  const nodesList: ProjectNode[] = (JSON.parse(localStorage.getItem('snaglist_nodes') || '[]') || []).filter((n: any) => n && n.project_id !== projectId);
+  const nodesList: ProjectNode[] = (safeParseList('snaglist_nodes') || []).filter((n: any) => n && n.project_id !== projectId);
 
   const newNodes: ProjectNode[] = [];
 
@@ -759,8 +774,8 @@ export const seedIzdiharProject = () => {
   localStorage.setItem('snaglist_nodes', JSON.stringify([...nodesList, ...newNodes]));
 
   // 5. Generate ~5,700 realistic snag items procedurally
-  const snagsList: InspectionItem[] = (JSON.parse(localStorage.getItem('snaglist_items') || '[]') || []).filter((s: any) => s && !String(s.id).startsWith('f0000000-0000-0000-0000-00000'));
-  const commentsList: InspectionComment[] = (JSON.parse(localStorage.getItem('snaglist_comments') || '[]') || []).filter((c: any) => c && !c.id.startsWith('e0000000-0000-0000-0000-00000'));
+  const snagsList: InspectionItem[] = (safeParseList('snaglist_items') || []).filter((s: any) => s && !String(s.id).startsWith('f0000000-0000-0000-0000-00000'));
+  const commentsList: InspectionComment[] = (safeParseList('snaglist_comments') || []).filter((c: any) => c && !c.id.startsWith('e0000000-0000-0000-0000-00000'));
   
   const itemsToAdd: InspectionItem[] = [];
   const commentsToAdd: InspectionComment[] = [];
@@ -1362,7 +1377,7 @@ export const initializeMockDatabase = () => {
 };
 
 const recomputeRates = (villas: Villa[], items: InspectionItem[], projects: Project[]) => {
-  const nodes: ProjectNode[] = JSON.parse(localStorage.getItem('snaglist_nodes') || '[]') || [];
+  const nodes: ProjectNode[] = safeParseList('snaglist_nodes') || [];
   
   // 1. Calculate for leaf nodes (Room/Area or Facility)
   nodes.forEach(node => {
@@ -1421,14 +1436,14 @@ export const dbService = {
     if (typeof window === 'undefined') return null;
     const email = localStorage.getItem('snaglist_current_user_email');
     if (!email) return null;
-    const profiles: Profile[] = JSON.parse(localStorage.getItem('snaglist_profiles') || '[]');
+    const profiles: Profile[] = safeParseList('snaglist_profiles');
     return profiles.find(p => p.email === email) || null;
   },
 
   // --- Companies ---
   getCompanies: (): Company[] => {
     if (typeof window === 'undefined') return SEED_COMPANIES;
-    return JSON.parse(localStorage.getItem('snaglist_companies') || '[]');
+    return safeParseList('snaglist_companies');
   },
 
   getCompanyById: (id: string): Company | undefined => {
@@ -1461,7 +1476,7 @@ export const dbService = {
   // --- Profiles ---
   getProfiles: (): Profile[] => {
     if (typeof window === 'undefined') return SEED_PROFILES;
-    const list: Profile[] = JSON.parse(localStorage.getItem('snaglist_profiles') || '[]');
+    const list: Profile[] = safeParseList('snaglist_profiles');
     
     // Filter profiles by current company ID, unless Super Admin
     const userContext = dbService.getCurrentUserContext();
@@ -1474,7 +1489,7 @@ export const dbService = {
   // --- Projects ---
   getProjects: (): Project[] => {
     if (typeof window === 'undefined') return [];
-    const list: Project[] = JSON.parse(localStorage.getItem('snaglist_projects') || '[]');
+    const list: Project[] = safeParseList('snaglist_projects');
     
     // Filter by user's company ID (tenant isolation)
     const userContext = dbService.getCurrentUserContext();
@@ -1485,7 +1500,7 @@ export const dbService = {
   },
 
   addProject: (proj: Omit<Project, 'id' | 'completion_rate' | 'created_at'>): Project => {
-    const projects = JSON.parse(localStorage.getItem('snaglist_projects') || '[]');
+    const projects = safeParseList('snaglist_projects');
     const newProj: Project = {
       ...proj,
       id: `proj-${Date.now()}`,
@@ -1509,7 +1524,7 @@ export const dbService = {
     };
     const nodes = dbService.getProjectNodesByProjectId(newProj.id);
     nodes.push(rootNode);
-    const allNodes = JSON.parse(localStorage.getItem('snaglist_nodes') || '[]');
+    const allNodes = safeParseList('snaglist_nodes');
     allNodes.push(rootNode);
     localStorage.setItem('snaglist_nodes', JSON.stringify(allNodes));
 
@@ -1517,7 +1532,7 @@ export const dbService = {
   },
 
   updateProject: (proj: Project): Project => {
-    const projects = JSON.parse(localStorage.getItem('snaglist_projects') || '[]');
+    const projects = safeParseList('snaglist_projects');
     const index = projects.findIndex((p: Project) => p.id === proj.id);
     if (index !== -1) {
       projects[index] = { ...proj };
@@ -1529,7 +1544,7 @@ export const dbService = {
   // --- Project Nodes (Generic Structure Tree) ---
   getProjectNodes: (): ProjectNode[] => {
     if (typeof window === 'undefined') return [];
-    const list: ProjectNode[] = JSON.parse(localStorage.getItem('snaglist_nodes') || '[]');
+    const list: ProjectNode[] = safeParseList('snaglist_nodes');
     
     // Filter by company_id
     const userContext = dbService.getCurrentUserContext();
@@ -1544,7 +1559,7 @@ export const dbService = {
   },
 
   addProjectNode: (node: Omit<ProjectNode, 'id' | 'completion_rate' | 'created_at' | 'updated_at'>): ProjectNode => {
-    const list = JSON.parse(localStorage.getItem('snaglist_nodes') || '[]');
+    const list = safeParseList('snaglist_nodes');
     const newNode: ProjectNode = {
       ...node,
       id: `node-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -1560,7 +1575,7 @@ export const dbService = {
   // --- Blocks (Backward compatibility wrapper mapping to project_nodes) ---
   getBlocks: (): Block[] => {
     if (typeof window === 'undefined') return [];
-    const list: Block[] = JSON.parse(localStorage.getItem('snaglist_blocks') || '[]');
+    const list: Block[] = safeParseList('snaglist_blocks');
     const userContext = dbService.getCurrentUserContext();
     if (userContext && userContext.role !== 'super_admin') {
       return list.filter(b => b.company_id === userContext.company_id);
@@ -1600,7 +1615,7 @@ export const dbService = {
   // --- Villas (Backward compatibility wrapper mapping to project_nodes) ---
   getVillas: (): Villa[] => {
     if (typeof window === 'undefined') return [];
-    const list: Villa[] = JSON.parse(localStorage.getItem('snaglist_villas') || '[]');
+    const list: Villa[] = safeParseList('snaglist_villas');
     const userContext = dbService.getCurrentUserContext();
     if (userContext && userContext.role !== 'super_admin') {
       return list.filter(v => v.company_id === userContext.company_id);
@@ -1667,7 +1682,7 @@ export const dbService = {
   // --- Categories ---
   getCategories: (): InspectionCategory[] => {
     if (typeof window === 'undefined') return [];
-    const list: InspectionCategory[] = JSON.parse(localStorage.getItem('snaglist_categories') || '[]');
+    const list: InspectionCategory[] = safeParseList('snaglist_categories');
     const userContext = dbService.getCurrentUserContext();
     if (userContext && userContext.role !== 'super_admin') {
       return list.filter(c => c.company_id === userContext.company_id);
@@ -1695,7 +1710,7 @@ export const dbService = {
   // --- Templates ---
   getTemplates: (): InspectionTemplate[] => {
     if (typeof window === 'undefined') return [];
-    const list: InspectionTemplate[] = JSON.parse(localStorage.getItem('snaglist_templates') || '[]');
+    const list: InspectionTemplate[] = safeParseList('snaglist_templates');
     const userContext = dbService.getCurrentUserContext();
     if (userContext && userContext.role !== 'super_admin') {
       return list.filter(t => t.company_id === userContext.company_id);
@@ -1722,7 +1737,7 @@ export const dbService = {
   },
 
   deleteTemplate: (id: string) => {
-    const templates = JSON.parse(localStorage.getItem('snaglist_templates') || '[]');
+    const templates = safeParseList('snaglist_templates');
     const filtered = templates.filter((t: any) => t.id !== id);
     localStorage.setItem('snaglist_templates', JSON.stringify(filtered));
   },
@@ -1730,7 +1745,7 @@ export const dbService = {
   // --- Inspection Items (Snags) ---
   getInspectionItems: (): InspectionItem[] => {
     if (typeof window === 'undefined') return [];
-    const list: InspectionItem[] = JSON.parse(localStorage.getItem('snaglist_items') || '[]');
+    const list: InspectionItem[] = safeParseList('snaglist_items');
     
     // Filter by company
     const userContext = dbService.getCurrentUserContext();
@@ -1748,7 +1763,7 @@ export const dbService = {
     const userContext = dbService.getCurrentUserContext();
     const companyId = userContext?.company_id || DEFAULT_ORG_ID;
 
-    const items = JSON.parse(localStorage.getItem('snaglist_items') || '[]');
+    const items = safeParseList('snaglist_items');
     const count = items.length + 1;
     const newItem: InspectionItem = {
       ...item,
@@ -1774,7 +1789,7 @@ export const dbService = {
   },
 
   updateInspectionItem: (item: InspectionItem, userId: string): InspectionItem => {
-    const items = JSON.parse(localStorage.getItem('snaglist_items') || '[]');
+    const items = safeParseList('snaglist_items');
     const index = items.findIndex((i: any) => i.id === item.id);
     if (index !== -1) {
       const oldItem = items[index];
@@ -1828,7 +1843,7 @@ export const dbService = {
   },
 
   deleteInspectionItem: (id: string) => {
-    const items = JSON.parse(localStorage.getItem('snaglist_items') || '[]');
+    const items = safeParseList('snaglist_items');
     const filtered = items.filter((item: any) => item.id !== id);
     localStorage.setItem('snaglist_items', JSON.stringify(filtered));
     dbService.triggerRatesUpdate();
@@ -1837,7 +1852,7 @@ export const dbService = {
   // --- Comments ---
   getCommentsBySnagId: (snagId: string): InspectionComment[] => {
     if (typeof window === 'undefined') return [];
-    const allComments: InspectionComment[] = JSON.parse(localStorage.getItem('snaglist_comments') || '[]');
+    const allComments: InspectionComment[] = safeParseList('snaglist_comments');
     const userContext = dbService.getCurrentUserContext();
     const companyId = userContext?.company_id || DEFAULT_ORG_ID;
 
@@ -1850,7 +1865,7 @@ export const dbService = {
     const userContext = dbService.getCurrentUserContext();
     const companyId = userContext?.company_id || DEFAULT_ORG_ID;
 
-    const allComments = JSON.parse(localStorage.getItem('snaglist_comments') || '[]');
+    const allComments = safeParseList('snaglist_comments');
     const newComment: InspectionComment = {
       id: `comm-${Date.now()}`,
       inspection_item_id: snagId,
@@ -1871,7 +1886,7 @@ export const dbService = {
   // --- Photos ---
   getPhotosBySnagId: (snagId: string): InspectionPhoto[] => {
     if (typeof window === 'undefined') return [];
-    const allPhotos: InspectionPhoto[] = JSON.parse(localStorage.getItem('snaglist_photos') || '[]');
+    const allPhotos: InspectionPhoto[] = safeParseList('snaglist_photos');
     const userContext = dbService.getCurrentUserContext();
     const companyId = userContext?.company_id || DEFAULT_ORG_ID;
 
@@ -1882,7 +1897,7 @@ export const dbService = {
     const userContext = dbService.getCurrentUserContext();
     const companyId = userContext?.company_id || DEFAULT_ORG_ID;
 
-    const allPhotos = JSON.parse(localStorage.getItem('snaglist_photos') || '[]');
+    const allPhotos = safeParseList('snaglist_photos');
     const newPhoto: InspectionPhoto = {
       id: `photo-${Date.now()}`,
       inspection_item_id: snagId,
@@ -1902,7 +1917,7 @@ export const dbService = {
   },
 
   deletePhoto: (photoId: string) => {
-    const allPhotos = JSON.parse(localStorage.getItem('snaglist_photos') || '[]');
+    const allPhotos = safeParseList('snaglist_photos');
     const filtered = allPhotos.filter((p: any) => p.id !== photoId);
     localStorage.setItem('snaglist_photos', JSON.stringify(filtered));
   },
@@ -1910,7 +1925,7 @@ export const dbService = {
   // --- History ---
   getHistoryBySnagId: (snagId: string): InspectionHistory[] => {
     if (typeof window === 'undefined') return [];
-    const allHistory: InspectionHistory[] = JSON.parse(localStorage.getItem('snaglist_history') || '[]');
+    const allHistory: InspectionHistory[] = safeParseList('snaglist_history');
     const userContext = dbService.getCurrentUserContext();
     const companyId = userContext?.company_id || DEFAULT_ORG_ID;
 
@@ -1923,7 +1938,7 @@ export const dbService = {
     const userContext = dbService.getCurrentUserContext();
     const companyId = userContext?.company_id || DEFAULT_ORG_ID;
 
-    const allHistory = JSON.parse(localStorage.getItem('snaglist_history') || '[]');
+    const allHistory = safeParseList('snaglist_history');
     const newEntry: InspectionHistory = {
       id: `hist-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       inspection_item_id: snagId,
@@ -1942,7 +1957,7 @@ export const dbService = {
   // --- Notifications ---
   getNotifications: (userId: string): Notification[] => {
     if (typeof window === 'undefined') return [];
-    const allNotifs: Notification[] = JSON.parse(localStorage.getItem('snaglist_notifications') || '[]');
+    const allNotifs: Notification[] = safeParseList('snaglist_notifications');
     const userContext = dbService.getCurrentUserContext();
     const companyId = userContext?.company_id || DEFAULT_ORG_ID;
 
@@ -1955,7 +1970,7 @@ export const dbService = {
     const userContext = dbService.getCurrentUserContext();
     const companyId = userContext?.company_id || DEFAULT_ORG_ID;
 
-    const allNotifs = JSON.parse(localStorage.getItem('snaglist_notifications') || '[]');
+    const allNotifs = safeParseList('snaglist_notifications');
     const newNotif: Notification = {
       id: `notif-${Date.now()}`,
       user_id: userId,
@@ -1972,7 +1987,7 @@ export const dbService = {
   },
 
   markNotificationAsRead: (id: string) => {
-    const allNotifs = JSON.parse(localStorage.getItem('snaglist_notifications') || '[]');
+    const allNotifs = safeParseList('snaglist_notifications');
     const index = allNotifs.findIndex((n: any) => n.id === id);
     if (index !== -1) {
       allNotifs[index].is_read = true;
@@ -1983,7 +1998,7 @@ export const dbService = {
   // --- Export History ---
   getExportHistory: (): ExportHistory[] => {
     if (typeof window === 'undefined') return [];
-    const list: ExportHistory[] = JSON.parse(localStorage.getItem('snaglist_exports') || '[]');
+    const list: ExportHistory[] = safeParseList('snaglist_exports');
     const userContext = dbService.getCurrentUserContext();
     if (userContext && userContext.role !== 'super_admin') {
       return list.filter(e => e.company_id === userContext.company_id);
@@ -2014,7 +2029,7 @@ export const dbService = {
   // --- Project Document Folders & Files ---
   getDocumentFolders: (projectId: string): ProjectDocumentFolder[] => {
     if (typeof window === 'undefined') return [];
-    const list: ProjectDocumentFolder[] = JSON.parse(localStorage.getItem('snaglist_doc_folders') || '[]');
+    const list: ProjectDocumentFolder[] = safeParseList('snaglist_doc_folders');
     const userContext = dbService.getCurrentUserContext();
     const companyId = userContext?.company_id || DEFAULT_ORG_ID;
 
@@ -2025,7 +2040,7 @@ export const dbService = {
     const userContext = dbService.getCurrentUserContext();
     const companyId = userContext?.company_id || DEFAULT_ORG_ID;
 
-    const list = JSON.parse(localStorage.getItem('snaglist_doc_folders') || '[]');
+    const list = safeParseList('snaglist_doc_folders');
     const newFolder: ProjectDocumentFolder = {
       ...folder,
       id: `fld-${Date.now()}`,
@@ -2039,7 +2054,7 @@ export const dbService = {
 
   getDocuments: (projectId: string): ProjectDocument[] => {
     if (typeof window === 'undefined') return [];
-    const list: ProjectDocument[] = JSON.parse(localStorage.getItem('snaglist_docs') || '[]');
+    const list: ProjectDocument[] = safeParseList('snaglist_docs');
     const userContext = dbService.getCurrentUserContext();
     const companyId = userContext?.company_id || DEFAULT_ORG_ID;
 
@@ -2050,7 +2065,7 @@ export const dbService = {
     const userContext = dbService.getCurrentUserContext();
     const companyId = userContext?.company_id || DEFAULT_ORG_ID;
 
-    const list = JSON.parse(localStorage.getItem('snaglist_docs') || '[]');
+    const list = safeParseList('snaglist_docs');
     const newDoc: ProjectDocument = {
       ...doc,
       id: `doc-${Date.now()}`,
@@ -2068,7 +2083,7 @@ export const dbService = {
   triggerRatesUpdate: () => {
     const villas = dbService.getVillas();
     const items = dbService.getInspectionItems();
-    const projects = JSON.parse(localStorage.getItem('snaglist_projects') || '[]');
+    const projects = safeParseList('snaglist_projects');
     if (projects.length > 0) {
       recomputeRates(villas, items, projects);
     }
