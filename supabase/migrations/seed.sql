@@ -44,7 +44,7 @@ INSERT INTO public.blocks (id, project_id, name, description) VALUES
 ON CONFLICT (project_id, name) DO NOTHING;
 
 -- 5. Seed Villas (30 Villas)
-INSERT INTO public.villas (id, block_id, villa_number, owner, contractor, consultant, engineer) VALUES
+INSERT INTO public.villas (id, block_id, villa_number, owner, contractor, consultant, engineer, completion_rate) VALUES
 -- Block A (Villas 01 to 10)
 ('e0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Villa 01', 'Fahad Al-Qahtani', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
 ('e0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', 'Villa 02', 'Sarah Al-Sudairy', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
