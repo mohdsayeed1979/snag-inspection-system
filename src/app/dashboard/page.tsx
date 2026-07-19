@@ -32,6 +32,7 @@ import {
 export default function Dashboard() {
   const { user, currentCompany } = useAuth();
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [mounted, setMounted] = useState(false);
   
   // Dashboard states
   const [projects, setProjects] = useState<Project[]>([]);
@@ -41,6 +42,7 @@ export default function Dashboard() {
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
 
   useEffect(() => {
+    setMounted(true);
     setProjects(dbService.getProjects());
     setAllItems(dbService.getInspectionItems());
     setNodes(dbService.getProjectNodes());
@@ -54,6 +56,17 @@ export default function Dashboard() {
       setSelectedProjectId(projects[0].id);
     }
   }, [projects]);
+
+  if (!mounted) {
+    return (
+      <div className="h-[60vh] flex items-center justify-center bg-background text-foreground">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-xs font-semibold text-muted-foreground animate-pulse">Loading dashboard metrics...</p>
+        </div>
+      </div>
+    );
+  }
 
   const activeProject = projects.find(p => p.id === selectedProjectId) || null;
 

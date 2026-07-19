@@ -197,7 +197,7 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
               <div className="overflow-hidden">
                 <p className="text-sm font-semibold truncate text-white leading-tight">{user?.full_name}</p>
                 <span className="text-[10px] uppercase font-bold text-accent tracking-wider leading-none">
-                  {user?.role.replace('_', ' ')}
+                  {user?.role ? user.role.replace('_', ' ') : ''}
                 </span>
               </div>
             </div>
@@ -254,7 +254,7 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
                 <div className="overflow-hidden">
                   <p className="text-xs font-semibold text-white truncate">{user?.full_name}</p>
                   <span className="text-[9px] uppercase font-bold text-accent tracking-wider">
-                    {user?.role.replace('_', ' ')}
+                    {user?.role ? user.role.replace('_', ' ') : ''}
                   </span>
                 </div>
               </div>
@@ -351,7 +351,7 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
               >
                 {allProfiles.map((p) => (
                   <option key={p.id} value={p.email} className="bg-card text-foreground">
-                    {p.full_name} ({p.role.replace('_', ' ')})
+                    {p.full_name} ({p.role ? p.role.replace('_', ' ') : ''})
                   </option>
                 ))}
               </select>
