@@ -133,17 +133,17 @@ BEGIN
             
             -- Pick a random title/description based on category
             IF v_cat_rec.name = 'المطبخ' THEN
-                v_title := ARRAY['Silicone residues', 'Drawer alignment', 'Scratches on panels', 'Hinge adjustment', 'Missing handle'][1 + floor(random() * 5)::int];
+                v_title := (ARRAY['Silicone residues', 'Drawer alignment', 'Scratches on panels', 'Hinge adjustment', 'Missing handle'])[1 + floor(random() * 5)::int];
             ELSIF v_cat_rec.name = 'خزانة الملابس' THEN
-                v_title := ARRAY['Wardrobe alignment', 'LED strip sensor issue', 'Sliding door drag', 'Shelving deflection', 'Frame screw loose'][1 + floor(random() * 5)::int];
+                v_title := (ARRAY['Wardrobe alignment', 'LED strip sensor issue', 'Sliding door drag', 'Shelving deflection', 'Frame screw loose'])[1 + floor(random() * 5)::int];
             ELSIF v_cat_rec.name = 'Electrical' THEN
-                v_title := ARRAY['Ganging plate loose', 'Earth leakage check', 'DB board missing label', 'Power socket not working', 'Light fitting scratch'][1 + floor(random() * 5)::int];
+                v_title := (ARRAY['Ganging plate loose', 'Earth leakage check', 'DB board missing label', 'Power socket not working', 'Light fitting scratch'])[1 + floor(random() * 5)::int];
             ELSIF v_cat_rec.name = 'Plumbing' THEN
-                v_title := ARRAY['Drain block', 'Pipe joint leakage', 'Low water pressure', 'Silicon missing around sink', 'Mixer tap loose'][1 + floor(random() * 5)::int];
+                v_title := (ARRAY['Drain block', 'Pipe joint leakage', 'Low water pressure', 'Silicon missing around sink', 'Mixer tap loose'])[1 + floor(random() * 5)::int];
             ELSIF v_cat_rec.name = 'HVAC' THEN
-                v_title := ARRAY['Thermostat display error', 'AC filter dirty', 'AC grill loose', 'Duct vibration noise', 'Condensation drop'][1 + floor(random() * 5)::int];
+                v_title := (ARRAY['Thermostat display error', 'AC filter dirty', 'AC grill loose', 'Duct vibration noise', 'Condensation drop'])[1 + floor(random() * 5)::int];
             ELSE
-                v_title := ARRAY['Wall paint patchiness', 'Floor tile hollow', 'Skirting gap', 'Window lock jammed', 'Door paint touch-up'][1 + floor(random() * 5)::int];
+                v_title := (ARRAY['Wall paint patchiness', 'Floor tile hollow', 'Skirting gap', 'Window lock jammed', 'Door paint touch-up'])[1 + floor(random() * 5)::int];
             END IF;
 
             INSERT INTO public.inspection_items (
@@ -153,7 +153,7 @@ BEGIN
                 v_rec.id,
                 v_cat_rec.id,
                 CASE WHEN random() > 0.5 THEN 'Ground Floor' ELSE 'First Floor' END,
-                ARRAY['Kitchen', 'Living Room', 'Master Bedroom', 'Toilet', 'Corridor'][1 + floor(random() * 5)::int],
+                (ARRAY['Kitchen', 'Living Room', 'Master Bedroom', 'Toilet', 'Corridor'])[1 + floor(random() * 5)::int],
                 v_title,
                 v_title || ' needs rectification as per specifications.',
                 v_priority,
