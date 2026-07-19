@@ -521,6 +521,25 @@ export default function Dashboard() {
           </div>
         </>
       )}
+
+      {!activeProject && projects.length > 0 && (
+        <div className="bg-card border border-border p-12 text-center rounded-2xl flex flex-col items-center justify-center">
+          <Building2 className="w-12 h-12 text-primary/40 mb-3 animate-pulse" />
+          <h3 className="text-sm font-bold text-foreground">Loading Selected Project...</h3>
+          <p className="text-xs text-muted-foreground mt-1">Please select an enterprise project from the dropdown above to view metrics.</p>
+        </div>
+      )}
+
+      {projects.length === 0 && (
+        <div className="bg-card border border-border p-12 text-center rounded-2xl flex flex-col items-center justify-center">
+          <AlertCircle className="w-12 h-12 text-danger/60 mb-3" />
+          <h3 className="text-sm font-bold text-foreground">No Projects Registered</h3>
+          <p className="text-xs text-muted-foreground mt-1">Go to Projects Explorer to register a project and setup inspection structures.</p>
+          <Link href="/villas" className="mt-4 px-4 py-2.5 bg-primary hover:bg-primary/95 text-white font-bold text-xs rounded-xl transition-all shadow shadow-primary/10">
+            Open Projects Explorer
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

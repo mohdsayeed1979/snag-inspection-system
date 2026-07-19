@@ -27,7 +27,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadCompanyContext = (profile: Profile) => {
+  const loadCompanyContext = (profile: Profile | null) => {
+    if (!profile) return;
     // Determine the active company
     let companyId = profile.company_id;
     if (profile.role === 'super_admin') {
@@ -59,22 +60,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    let activeUser: Profile;
+    let activeUser: Profile | null = null;
     if (storedUserEmail) {
       const found = loadedProfiles.find(p => p.email === storedUserEmail);
       if (found) {
         activeUser = found;
       } else {
-        activeUser = loadedProfiles[0];
+        activeUser = loadedProfiles[0] || SEED_PROFILES[0];
       }
     } else {
-      const defaultUser = loadedProfiles.find(p => p.role === 'project_manager') || loadedProfiles[0];
+      const defaultUser = loadedProfiles.find(p => p.role === 'project_manager') || loadedProfiles[0] || SEED_PROFILES[0];
       activeUser = defaultUser;
-      localStorage.setItem('snaglist_current_user_email', defaultUser.email);
+      if (defaultUser) {
+        localStorage.setItem('snaglist_current_user_email', defaultUser.email);
+      }
     }
 
-    setUser(activeUser);
-    loadCompanyContext(activeUser);
+    const finalUser = activeUser || SEED_PROFILES[0];
+    setUser(finalUser);
+    loadCompanyContext(finalUser);
     setIsLoading(false);
   }, []);
 
