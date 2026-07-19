@@ -130,25 +130,52 @@ export default function ProjectDetailsPage() {
 
   const loadData = () => {
     const projectsList = dbService.getProjects();
-    const currentProj = projectsList.find(p => p.id === projectId);
+    let currentProj = projectsList.find(p => p.id === projectId);
+    let initialNodeId: string | null = currentNodeId;
+
+    if (!currentProj) {
+      // It might be a villa ID or node ID
+      const allNodes = dbService.getProjectNodes();
+      const matchedNode = allNodes.find(n => n.id === projectId);
+      if (matchedNode) {
+        currentProj = projectsList.find(p => p.id === matchedNode.project_id);
+        initialNodeId = matchedNode.id;
+      } else {
+        // Fallback checks
+        const legacyVillas = dbService.getVillas();
+        const matchedVilla = legacyVillas.find(v => v.id === projectId);
+        if (matchedVilla) {
+          initialNodeId = matchedVilla.id;
+          const legacyBlocks = dbService.getBlocks();
+          const matchedBlock = legacyBlocks.find(b => b.id === matchedVilla.block_id);
+          if (matchedBlock) {
+            currentProj = projectsList.find(p => p.id === matchedBlock.project_id);
+          }
+        }
+      }
+    }
     
     if (currentProj) {
       setProject(currentProj);
       setCategories(dbService.getCategories());
       setProfiles(dbService.getProfiles());
       
-      const allNodes = dbService.getProjectNodesByProjectId(projectId);
+      const allNodes = dbService.getProjectNodesByProjectId(currentProj.id);
       setNodes(allNodes);
       
-      // Default node navigation to the first root level node
-      const roots = allNodes.filter(n => n.parent_id === null);
-      if (roots.length > 0 && currentNodeId === null) {
-        setCurrentNodeId(roots[0].id);
+      // Default node navigation
+      if (initialNodeId) {
+        setCurrentNodeId(initialNodeId);
+      } else {
+        const roots = allNodes.filter(n => n.parent_id === null);
+        if (roots.length > 0 && currentNodeId === null) {
+          setCurrentNodeId(roots[0].id);
+        }
       }
 
       // Load Document Vault files
-      setDocFolders(dbService.getDocumentFolders(projectId));
-      setDocuments(dbService.getDocuments(projectId));
+      setDocFolders(dbService.getDocumentFolders(currentProj.id));
+      setDocuments(dbService.getDocuments(currentProj.id));
 
       // Fetch active items
       const allItems = dbService.getInspectionItems();
@@ -437,7 +464,7 @@ export default function ProjectDetailsPage() {
   if (!project) return null;
 
   // Active level name helper (e.g. Block/Villa)
-  const activeLevelName = project.level_structure[nodeBreadcrumbs.length] || 'Sub Unit';
+  const activeLevelName = (project.level_structure || ['Block', 'Villa'])[nodeBreadcrumbs.length] || 'Sub Unit';
   const parentNode = nodes.find(n => n.id === currentNodeId);
   const childNodes = nodes.filter(n => n.parent_id === currentNodeId);
 

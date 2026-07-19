@@ -312,11 +312,219 @@ const SEED_TEMPLATES: Omit<InspectionTemplate, 'company_id'>[] = [
   { id: 't9', category_name: 'HVAC', audit_item: 'Verify AC cooling performance and noise levels in rooms', is_active: true, created_at: new Date().toISOString() }
 ];
 
+// Helper to migrate legacy browser DB structures
+const runLegacyDatabaseMigration = () => {
+  if (typeof window === 'undefined') return;
+  console.log('Migrating legacy browser local storage to multi-tenant structures...');
+
+  const DEFAULT_ORG_ID = 'c0000000-0000-0000-0000-000000000000';
+
+  // 1. Companies
+  const existingCompanies = localStorage.getItem('snaglist_companies');
+  if (!existingCompanies) {
+    localStorage.setItem('snaglist_companies', JSON.stringify([
+      {
+        id: DEFAULT_ORG_ID,
+        name: 'Default Organization',
+        code: 'DEF_ORG',
+        timezone: 'Asia/Riyadh',
+        currency: 'SAR',
+        language: 'ar',
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        primary_color: '#6A89A7',
+        secondary_color: '#E0E7FF',
+        report_header: 'Default Organization - Inspection Audit Report',
+        report_footer: 'Confidential Document - Generated Automatically'
+      },
+      {
+        id: 'co2-uuid-0000-0000-000000000000',
+        name: 'Al-Mousa Construction Group',
+        code: 'MOUSA_GROUP',
+        timezone: 'Asia/Riyadh',
+        currency: 'SAR',
+        language: 'en',
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        primary_color: '#1E3A8A',
+        secondary_color: '#DBEAFE',
+        report_header: 'Al-Mousa Construction - Site QA/QC Report',
+        report_footer: 'Al-Mousa Group Operations Dept.'
+      }
+    ]));
+  }
+
+  // 2. Profiles (inject company_id)
+  const profilesStr = localStorage.getItem('snaglist_profiles');
+  if (profilesStr) {
+    try {
+      const profiles = JSON.parse(profilesStr);
+      const updated = profiles.map((p: any) => ({
+        ...p,
+        company_id: p.company_id || DEFAULT_ORG_ID
+      }));
+      localStorage.setItem('snaglist_profiles', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // 3. Projects (inject company_id, project_type, level_structure)
+  const projectsStr = localStorage.getItem('snaglist_projects');
+  if (projectsStr) {
+    try {
+      const projects = JSON.parse(projectsStr);
+      const updated = projects.map((p: any) => ({
+        ...p,
+        company_id: p.company_id || DEFAULT_ORG_ID,
+        project_type: p.project_type || 'villa',
+        level_structure: p.level_structure || ['Block', 'Villa']
+      }));
+      localStorage.setItem('snaglist_projects', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // 4. Blocks (inject company_id) & project_nodes tree
+  const blocksStr = localStorage.getItem('snaglist_blocks');
+  const projectNodes: any[] = [];
+  if (blocksStr) {
+    try {
+      const blocks = JSON.parse(blocksStr);
+      const updated = blocks.map((b: any) => {
+        const uBlock = { ...b, company_id: b.company_id || DEFAULT_ORG_ID };
+        projectNodes.push({
+          id: uBlock.id,
+          project_id: uBlock.project_id,
+          parent_id: null,
+          company_id: uBlock.company_id,
+          name: uBlock.name,
+          node_type: 'Block',
+          description: uBlock.description,
+          completion_rate: 0,
+          created_at: uBlock.created_at || new Date().toISOString(),
+          updated_at: uBlock.created_at || new Date().toISOString()
+        });
+        return uBlock;
+      });
+      localStorage.setItem('snaglist_blocks', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // 5. Villas (inject company_id) & project_nodes tree
+  const villasStr = localStorage.getItem('snaglist_villas');
+  if (villasStr) {
+    try {
+      const villas = JSON.parse(villasStr);
+      const updated = villas.map((v: any) => {
+        const uVilla = { ...v, company_id: v.company_id || DEFAULT_ORG_ID };
+        projectNodes.push({
+          id: uVilla.id,
+          project_id: 'proj-1',
+          parent_id: uVilla.block_id,
+          company_id: uVilla.company_id,
+          name: uVilla.villa_number,
+          node_type: 'Villa',
+          description: `${uVilla.owner || ''} unit`,
+          completion_rate: uVilla.completion_rate || 0,
+          created_at: uVilla.created_at || new Date().toISOString(),
+          updated_at: uVilla.created_at || new Date().toISOString()
+        });
+        return uVilla;
+      });
+      localStorage.setItem('snaglist_villas', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  localStorage.setItem('snaglist_nodes', JSON.stringify(projectNodes));
+
+  // 6. Categories
+  const categoriesStr = localStorage.getItem('snaglist_categories');
+  if (categoriesStr) {
+    try {
+      const categories = JSON.parse(categoriesStr);
+      const updated = categories.map((c: any) => ({
+        ...c,
+        company_id: c.company_id || DEFAULT_ORG_ID
+      }));
+      localStorage.setItem('snaglist_categories', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // 7. Templates
+  const templatesStr = localStorage.getItem('snaglist_templates');
+  if (templatesStr) {
+    try {
+      const templates = JSON.parse(templatesStr);
+      const updated = templates.map((t: any) => ({
+        ...t,
+        company_id: t.company_id || DEFAULT_ORG_ID
+      }));
+      localStorage.setItem('snaglist_templates', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // 8. Items
+  const itemsStr = localStorage.getItem('snaglist_items');
+  if (itemsStr) {
+    try {
+      const items = JSON.parse(itemsStr);
+      const updated = items.map((i: any) => ({
+        ...i,
+        company_id: i.company_id || DEFAULT_ORG_ID,
+        location_node_id: i.location_node_id || i.villa_id,
+        form_responses: i.form_responses || {}
+      }));
+      localStorage.setItem('snaglist_items', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // 9. Comments, Photos, History, Notifications
+  const tables = ['snaglist_comments', 'snaglist_photos', 'snaglist_history', 'snaglist_notifications'];
+  tables.forEach(tbl => {
+    const raw = localStorage.getItem(tbl);
+    if (raw) {
+      try {
+        const arr = JSON.parse(raw);
+        const updated = arr.map((item: any) => ({
+          ...item,
+          company_id: item.company_id || DEFAULT_ORG_ID
+        }));
+        localStorage.setItem(tbl, JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  });
+
+  localStorage.setItem('snaglist_doc_folders', JSON.stringify([]));
+  localStorage.setItem('snaglist_docs', JSON.stringify([]));
+};
+
 // Helper to seed localStorage
 export const initializeMockDatabase = () => {
   if (typeof window === 'undefined') return;
 
   const isSeeded = localStorage.getItem('snaglist_seeded');
+  const hasNodes = localStorage.getItem('snaglist_nodes');
+  
+  if (isSeeded && !hasNodes) {
+    runLegacyDatabaseMigration();
+  }
+
   if (isSeeded) return;
 
   console.log('Seeding LocalStorage multi-tenant sandbox database...');
