@@ -152,6 +152,13 @@ export interface InspectionItem {
   
   // Custom checklist response values
   form_responses?: Record<string, any>;
+
+  // Root cause analysis and sign-off details
+  root_cause?: string;
+  corrective_action?: string;
+  verification?: string;
+  closed_by?: string;
+  closed_date?: string;
 }
 
 export interface InspectionPhoto {
@@ -514,6 +521,357 @@ const runLegacyDatabaseMigration = () => {
   localStorage.setItem('snaglist_docs', JSON.stringify([]));
 };
 
+export const MASTER_CATEGORIES = [
+  { id: 'cat-civil', name: 'Civil Works', description: 'Concrete, structure, partition and masonry' },
+  { id: 'cat-arch', name: 'Architectural', description: 'Internal finishes, plaster and wall alignments' },
+  { id: 'cat-struct', name: 'Structural', description: 'Beams, columns, foundation and slab checks' },
+  { id: 'cat-mep', name: 'MEP', description: 'Mechanical, electrical and plumbing coordinated items' },
+  { id: 'cat-elec', name: 'Electrical', description: 'Power sockets, DB Dressing, earth continuity' },
+  { id: 'cat-light', name: 'Lighting', description: 'Light fixtures, switches and general lighting checks' },
+  { id: 'cat-lowcur', name: 'Low Current', description: 'Data, intercom, CCTV and telephone cabling' },
+  { id: 'cat-plumb', name: 'Plumbing', description: 'Water pressure, leakage, sanitary fixtures' },
+  { id: 'cat-drain', name: 'Drainage', description: 'Drain lines, floor traps, cleanouts and siphons' },
+  { id: 'cat-hvac', name: 'HVAC', description: 'AC performance, grilles, unit and insulation' },
+  { id: 'cat-fire', name: 'Fire Fighting', description: 'Sprinklers, fire hose reel and extinguisher checks' },
+  { id: 'cat-doors', name: 'Doors', description: 'Timber doors, hinges, locks and door closers' },
+  { id: 'cat-windows', name: 'Windows', description: 'Aluminium windows, gaskets and locking handles' },
+  { id: 'cat-glass', name: 'Glass', description: 'Glass panels, shower screens, tempering and scratches' },
+  { id: 'cat-paint', name: 'Painting', description: 'Wall painting, primer, putty, final coat and finishes' },
+  { id: 'cat-gypsum', name: 'Gypsum Ceiling', description: 'Gypsum board ceiling, joints, access panels and hangers' },
+  { id: 'cat-false', name: 'False Ceiling', description: 'Grid ceiling, tiles and support structure' },
+  { id: 'cat-waterproof', name: 'Waterproofing', description: 'Wet area waterproofing, roof and terrace membranes' },
+  { id: 'cat-flooring', name: 'Flooring', description: 'Parquet, vinyl, raised floors and underlayments' },
+  { id: 'cat-walltiles', name: 'Wall Tiles', description: 'Ceramic/porcelain wall tiles, tile lippage and grouting' },
+  { id: 'cat-floortiles', name: 'Floor Tiles', description: 'Ceramic/porcelain floor tiles, slope and grouting' },
+  { id: 'cat-marble', name: 'Marble', description: 'Marble vanity tops, stair treads, threshold and polish' },
+  { id: 'cat-granite', name: 'Granite', description: 'Granite countertops, external paving and thresholds' },
+  { id: 'cat-joinery', name: 'Joinery', description: 'General carpentry, trim, architraves and skirtings' },
+  { id: 'cat-kitchencab', name: 'Kitchen Cabinets', description: 'Kitchen cabinet carcasses, doors, shelves and handles' },
+  { id: 'cat-wardrobes', name: 'Wardrobes', description: 'Bedroom wardrobes, drawers, hanging rods and hinges' },
+  { id: 'cat-furniture', name: 'Furniture', description: 'Loose and fixed furniture checks' },
+  { id: 'cat-appliances', name: 'Appliances', description: 'White goods, ovens, hoods, hobs and fridges' },
+  { id: 'cat-sanitary', name: 'Sanitary Fixtures', description: 'Wash basins, toilets, bidets, showers and mixers' },
+  { id: 'cat-bathacc', name: 'Bathroom Accessories', description: 'Towel rails, soap holders, toilet roll holders and mirrors' },
+  { id: 'cat-curtains', name: 'Curtains', description: 'Curtain tracks, boxes, motorized tracks and drapes' },
+  { id: 'cat-alum', name: 'Aluminium Works', description: 'Cladding, louvers, screens and flashings' },
+  { id: 'cat-steel', name: 'Steel Works', description: 'Handrails, cat ladders, structural steel framing' },
+  { id: 'cat-ext', name: 'External Works', description: 'Asphalt paving, interlock, curb stones and gates' },
+  { id: 'cat-landscape', name: 'Landscape', description: 'Soft landscape, trees, grass, irrigation drippers' },
+  { id: 'cat-road', name: 'Road Works', description: 'Road marking, signage, manholes and speed humps' },
+  { id: 'cat-boundary', name: 'Boundary Wall', description: 'Perimeter fence, retaining walls and plaster' },
+  { id: 'cat-clean', name: 'Cleaning', description: 'Debris removal, chemical washing, deep clean' },
+  { id: 'cat-handover', name: 'Final Handover', description: 'Snag-free certification, keys tagging, testing & commissioning' },
+  { id: 'cat-general', name: 'General', description: 'Miscellaneous inspection checks' }
+];
+
+export const seedIzdiharProject = () => {
+  if (typeof window === 'undefined') return;
+  console.log('Procedurally seeding Izdihar Villa Project (IZD-001) with 3,000 snags...');
+
+  const DEFAULT_ORG_ID = 'c0000000-0000-0000-0000-000000000000';
+  const projectId = 'proj-izd';
+
+  // 1. Check/Add master categories
+  const categoriesList: InspectionCategory[] = JSON.parse(localStorage.getItem('snaglist_categories') || '[]');
+  MASTER_CATEGORIES.forEach(mc => {
+    if (!categoriesList.some(c => c.id === mc.id)) {
+      categoriesList.push({
+        id: mc.id,
+        company_id: DEFAULT_ORG_ID,
+        name: mc.name,
+        description: mc.description,
+        created_at: new Date().toISOString()
+      });
+    }
+  });
+  localStorage.setItem('snaglist_categories', JSON.stringify(categoriesList));
+
+  // 2. Add Project Izdihar
+  const projectsList: Project[] = JSON.parse(localStorage.getItem('snaglist_projects') || '[]');
+  if (!projectsList.some(p => p.id === projectId)) {
+    projectsList.push({
+      id: projectId,
+      company_id: DEFAULT_ORG_ID,
+      name: 'Izdihar Villa Project',
+      description: 'High-end residential compound featuring 30 luxury villas (120 units total) and comprehensive common facilities.',
+      owner: 'Default Organization',
+      contractor: 'Saudi Construction Co.',
+      consultant: 'Khatib & Alami',
+      engineer: 'Eng. Ahmed',
+      completion_rate: 68.0,
+      created_at: new Date().toISOString(),
+      project_type: 'villa',
+      level_structure: ['Villa', 'Unit', 'Room/Area']
+    });
+    localStorage.setItem('snaglist_projects', JSON.stringify(projectsList));
+  }
+
+  // 3. Generate project nodes tree
+  const nodesList: ProjectNode[] = JSON.parse(localStorage.getItem('snaglist_nodes') || '[]');
+  if (nodesList.some(n => n.project_id === projectId)) {
+    return;
+  }
+
+  const newNodes: ProjectNode[] = [];
+
+  // Generate 30 Villas
+  for (let v = 1; v <= 30; v++) {
+    const vId = `node-izd-v${v}`;
+    newNodes.push({
+      id: vId,
+      project_id: projectId,
+      parent_id: null,
+      company_id: DEFAULT_ORG_ID,
+      name: `Villa ${String(v).padStart(2, '0')}`,
+      node_type: 'Villa',
+      description: `3-Storey luxury villa building structure #S-${v}`,
+      completion_rate: Math.floor(Math.random() * 30) + 55, // 55% to 85%
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+
+    // For each villa, generate 4 Units
+    const unitTypes = ['Ground Floor Unit', 'First Floor Unit', 'Second Floor Unit', 'Penthouse Unit'];
+    unitTypes.forEach((uName, uIndex) => {
+      const uId = `node-izd-v${v}-u${uIndex + 1}`;
+      newNodes.push({
+        id: uId,
+        project_id: projectId,
+        parent_id: vId,
+        company_id: DEFAULT_ORG_ID,
+        name: uName,
+        node_type: 'Unit',
+        description: `${uName} of Villa ${String(v).padStart(2, '0')}`,
+        completion_rate: Math.floor(Math.random() * 35) + 50,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    });
+  }
+
+  // Generate Common Facilities parent node
+  const commonRootId = `node-izd-common`;
+  newNodes.push({
+    id: commonRootId,
+    project_id: projectId,
+    parent_id: null,
+    company_id: DEFAULT_ORG_ID,
+    name: 'Common Facilities',
+    node_type: 'Common Area',
+    description: 'Shared compound spaces and utility centers',
+    completion_rate: 75.0,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  });
+
+  // Common sub facilities list
+  const commonFacilities = [
+    'Management Office', 'Gym', 'Security Office', 'Guard Room', 
+    'Main Entrance', 'Exit Gate', 'Electrical Room', 'Pump Room', 
+    'Water Tank', 'Generator Room', 'Garbage Collection Area', 'Parking Areas', 
+    'Landscape Areas', 'Walkways', 'Boundary Wall', 'External Roads', 
+    'Street Lighting', 'Children\'s Play Area', 'Common Toilets', 'Utility Rooms'
+  ];
+
+  commonFacilities.forEach((cfName, cfIndex) => {
+    const cfId = `node-izd-cf-${cfIndex + 1}`;
+    newNodes.push({
+      id: cfId,
+      project_id: projectId,
+      parent_id: commonRootId,
+      company_id: DEFAULT_ORG_ID,
+      name: cfName,
+      node_type: 'Facility',
+      description: `${cfName} compound utility service`,
+      completion_rate: Math.floor(Math.random() * 20) + 70,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+  });
+
+  localStorage.setItem('snaglist_nodes', JSON.stringify([...nodesList, ...newNodes]));
+
+  // 4. Generate ~3,000 realistic snag items procedurally
+  const snagsList: InspectionItem[] = JSON.parse(localStorage.getItem('snaglist_items') || '[]');
+
+  const defectTemplates = [
+    { cat: 'cat-kitchencab', title: 'Cabinets alignment mismatch at top edge', desc: 'Verify level, skewness and gap size between overhead shutters.', priority: 'medium', room: 'Kitchen', root: 'Poor workmanship', correct: 'Adjust hinge backing screws' },
+    { cat: 'cat-kitchencab', title: 'Cabinet door hinge soft-closing mechanism not functioning', desc: 'Inspect soft close hinge piston. Replace if defective.', priority: 'low', room: 'Kitchen', root: 'Defective hardware material', correct: 'Replace soft close piston cup' },
+    { cat: 'cat-granite', title: 'Countertop granite has dull patches and scratches', desc: 'Re-polish stone top surfaces using diamond pads to restore gloss.', priority: 'medium', room: 'Kitchen', root: 'Lack of protection during work', correct: 'Grind stone with wet polish pad' },
+    { cat: 'cat-plumb', title: 'Silicone sealant at sink joints has gaps and voids', desc: 'Remove mouldy or gapped silicone and apply new sanitary grade silicone.', priority: 'medium', room: 'Kitchen', root: 'Poor sealing execution', correct: 'Strip old sealant and apply white silicone' },
+    { cat: 'cat-plumb', title: 'Sink drain siphon leaking under continuous flow pressure test', desc: 'Inspect slip joint washer under kitchen sink basin outlet.', priority: 'high', room: 'Kitchen', root: 'Improper fitting assembly', correct: 'Replace slip washer and tighten locknut' },
+    { cat: 'cat-sanitary', title: 'Water mixer handle operation is stiff and noisy', desc: 'Check cartridge alignment inside mixer valve body.', priority: 'low', room: 'Kitchen', root: 'Scale deposit or misaligned cartridge', correct: 'Disassemble handle and grease cartridge' },
+    { cat: 'cat-elec', title: 'Electrical socket has reversed line/neutral polarity', desc: 'Test socket outlet under counter. Rewire terminals.', priority: 'high', room: 'Kitchen', root: 'Negligence in cabling dressing', correct: 'Open faceplate and swap L-N wires' },
+    { cat: 'cat-paint', title: 'Paint finish shows roller marks and uneven putty touch-ups', desc: 'Sanding of surface and re-application of final paint coat.', priority: 'medium', room: 'Bedroom', root: 'Improper surface preparation', correct: 'Apply wall putty, sand and paint' },
+    { cat: 'cat-gypsum', title: 'Gypsum ceiling joint tape showing hairline cracks', desc: 'Open joint, apply mesh tape and gypsum compound. Sand and repaint.', priority: 'medium', room: 'Bedroom', root: 'Structural movement or poor jointing', correct: 'Rake joint, apply joint tape and paint' },
+    { cat: 'cat-flooring', title: 'Parquet flooring has hollow sounds and bubbles', desc: 'Inspect foam underlayment. Re-lay parquet panels.', priority: 'low', room: 'Bedroom', root: 'Uneven subfloor screed', correct: 'Levelling screed underlay and refit parquet' },
+    { cat: 'cat-wardrobes', title: 'Wardrobe sliding door is rubbing and binding against track', desc: 'Adjust runner wheels height inside sliding track.', priority: 'low', room: 'Bedroom', root: 'Slight sagging of wardrobe carcass', correct: 'Adjust roller roller height bolt' },
+    { cat: 'cat-windows', title: 'Window handle lock latch is stuck and hard to engage', desc: 'Lubricate multi-point locking latch gear system.', priority: 'low', room: 'Bedroom', root: 'Construction dust in locking mechanism', correct: 'Clean latch and apply WD-40 spray' },
+    { cat: 'cat-glass', title: 'Double glazed window pane has deep scratches on outer face', desc: 'Replace scratched glass pane in aluminium window frame.', priority: 'medium', room: 'Bedroom', root: 'Abrasive cleaning methods used', correct: 'Replace double glazed glass unit' },
+    { cat: 'cat-hvac', title: 'Split AC drain pipe blocked causing water condensation leak', desc: 'Clear drain pipes using pressurized nitrogen flush.', priority: 'high', room: 'Bedroom', root: 'Debris left inside AC drain cup', correct: 'Flush AC drain pipe with compressed gas' },
+    { cat: 'cat-lowcur', title: 'Internet RJ45 ethernet socket has no terminal continuity', desc: 'Re-terminate cable in bedroom wall plate and path panel.', priority: 'medium', room: 'Bedroom', root: 'Loose punch down wire connection', correct: 'Punch down ethernet wire pinout' },
+    { cat: 'cat-waterproof', title: 'Waterproofing floor pond test failed near drain flange', desc: 'Re-apply polyurethane waterproofing liquid membrane around floor trap.', priority: 'critical', room: 'Bathrooms', root: 'Improper seal around drain trap joint', correct: 'Chop tiles, apply polyurethane coat, re-test' },
+    { cat: 'cat-floortiles', title: 'Floor slope is flat causing water ponding near shower entrance', desc: 'Re-lay bathroom floor tiles to guarantee positive slope to drain.', priority: 'high', room: 'Bathrooms', root: 'Improper screed leveling', correct: 'Chop floor tiles, adjust screed slope, retile' },
+    { cat: 'cat-sanitary', title: 'Toilet bowl seat cover hinges are loose', desc: 'Tighten plastic expansion anchor bolts beneath ceramic ledge.', priority: 'low', room: 'Bathrooms', root: 'Loose factory assembly', correct: 'Tighten seat cover anchor bolt' },
+    { cat: 'cat-sanitary', title: 'Wash basin mixer hot and cold indicators are reversed', desc: 'Swap hot and cold flexible hose connection points.', priority: 'low', room: 'Bathrooms', root: 'Incorrect plumbing installation', correct: 'Swap connection hoses under basin' },
+    { cat: 'cat-bathacc', title: 'Bathroom mirror backing silvering starting to corrode', desc: 'Replace moisture-damaged mirror with copper-free backing mirror.', priority: 'low', room: 'Bathrooms', root: 'Poor quality mirror raw material', correct: 'Replace vanity mirror' },
+    { cat: 'cat-glass', title: 'Shower glass screen bottom seal has gaps leaking water', desc: 'Install new plastic sweep seal gasket under glass screen door.', priority: 'medium', room: 'Bathrooms', root: 'Worn or missing glass sweep sweep', correct: 'Install replacement sweep gasket' },
+    { cat: 'cat-floortiles', title: 'Bathroom floor tiles have uneven lippage exceeding 1mm limit', desc: 'Chop and replace high lip floor tile to prevent tripping hazard.', priority: 'medium', room: 'Bathrooms', root: 'Adhesive shrinkage or poor tiling', correct: 'Replace floor tiles to flat level' },
+    { cat: 'cat-marble', title: 'Marble flooring has open cracks needing resin fill and polish', desc: 'Fill cracks with colored epoxy resin, grind, and repolish floor.', priority: 'medium', room: 'Living Room', root: 'Slight screed shrinkage crack transfer', correct: 'Fill with polyester glue and polish' },
+    { cat: 'cat-curtains', title: 'Curtain track runner is blocked and does not slide smoothly', desc: 'Inspect track alignment and remove paint residue inside slot.', priority: 'low', room: 'Living Room', root: 'Paint splatters inside track cavity', correct: 'Clean and realign curtain runners' },
+    { cat: 'cat-doors', title: 'Door leaf bottom edge rubbing against threshold strip', desc: 'Remove door leaf and trim bottom edge by 2mm. Paint raw edge.', priority: 'medium', room: 'Living Room', root: 'Door wood expansion from humidity', correct: 'Plane door leaf bottom edge' },
+    { cat: 'cat-light', title: 'Light switch plate is misaligned and not level', desc: 'Loosen switch screws, level plate with spirit tool, and tighten.', priority: 'low', room: 'Living Room', root: 'Loose electrical box installation', correct: 'Level electrical faceplate' },
+    { cat: 'cat-lowcur', title: 'TV coaxial cable terminal has weak signal level', desc: 'Re-terminate F-connector plug in living room outlet plate.', priority: 'low', room: 'Living Room', root: 'Poor coaxial shielding contact', correct: 'Crimp new F-connector terminal' },
+    { cat: 'cat-hvac', title: 'AC linear diffuser has dust deposits and paint stains', desc: 'Remove diffuser, wash, repaint if stained, and reinstall.', priority: 'low', room: 'Living Room', root: 'Running AC without filters during build', correct: 'Clean linear slot diffuser' },
+    { cat: 'cat-plumb', title: 'Pump station suction valve packing leaking water', desc: 'Tighten gland follower nut or replace graphite packing ring.', priority: 'high', room: 'Pump Room', root: 'Wear of gland packing seal', correct: 'Tighten gland follower nut' },
+    { cat: 'cat-elec', title: 'Electrical DB has missing circuit index charts', desc: 'Produce, print and paste layout cards inside DB cover door.', priority: 'low', room: 'Electrical Room', root: 'Incomplete labeling documentation', correct: 'Affix printed DB directory charts' },
+    { cat: 'cat-road', title: 'Asphalt paving has surface cracking near curbstone joints', desc: 'Bituminous crack sealer compound application.', priority: 'medium', room: 'External Roads', root: 'Compaction failure at pavement edges', correct: 'Apply hot asphalt crack filler' },
+    { cat: 'cat-steel', title: 'Children playground swing chains have minor surface rust', desc: 'Wire brush rust spots, apply primer and paint with protective enamel.', priority: 'medium', room: 'Children\'s Play Area', root: 'Exposure to high atmospheric humidity', correct: 'Paint swing chain links' },
+    { cat: 'cat-ext', title: 'Street lighting pole is not turning on', desc: 'Inspect photocell relay circuit or replace blown ballast fuse.', priority: 'high', room: 'Street Lighting', root: 'Blown street light pole fuse', correct: 'Replace pole fuse wire' },
+    { cat: 'cat-boundary', title: 'Boundary wall plaster has hairline cracks and paint peeling', desc: 'Scrape peeling paint, plaster cracks with filler, and repaint.', priority: 'low', room: 'Boundary Wall', root: 'Moisture ingress from soil side', correct: 'Apply wall filler and outdoor paint' }
+  ];
+
+  const unitNodes = newNodes.filter(n => n.node_type === 'Unit');
+  const facilityNodes = newNodes.filter(n => n.node_type === 'Facility');
+  const itemsToAdd: InspectionItem[] = [];
+
+  let snagCounter = 1;
+
+  unitNodes.forEach((unitNode) => {
+    const snagsToCreate = Math.floor(Math.random() * 8) + 16;
+    for (let k = 0; k < snagsToCreate; k++) {
+      const temp = defectTemplates[Math.floor(Math.random() * defectTemplates.length)];
+      
+      const rVal = Math.random();
+      let status = 'open';
+      if (rVal < 0.25) status = 'open';
+      else if (rVal < 0.45) status = 'in_progress';
+      else if (rVal < 0.60) status = 'rectified';
+      else if (rVal < 0.75) status = 'qa_verification';
+      else status = 'closed';
+
+      const daysAgo = Math.floor(Math.random() * 30) + 1;
+      const createdDate = new Date();
+      createdDate.setDate(createdDate.getDate() - daysAgo);
+
+      const dueDate = new Date(createdDate);
+      dueDate.setDate(dueDate.getDate() + 14);
+
+      let closedDate: string | undefined = undefined;
+      if (status === 'closed') {
+        const closedDays = Math.floor(Math.random() * daysAgo);
+        const cDate = new Date(createdDate);
+        cDate.setDate(cDate.getDate() + closedDays);
+        closedDate = cDate.toISOString().split('T')[0];
+      }
+
+      itemsToAdd.push({
+        id: `snag-izd-${snagCounter}`,
+        snag_number: `IZD-SNAG-${String(snagCounter).padStart(4, '0')}`,
+        company_id: DEFAULT_ORG_ID,
+        villa_id: unitNode.parent_id || '',
+        location_node_id: unitNode.id,
+        category_id: temp.cat,
+        title: temp.title,
+        description: temp.desc,
+        priority: temp.priority as any,
+        status: status as any,
+        location: unitNode.name,
+        room: temp.room,
+        remarks: 'Identified during site QA/QC inspection walk.',
+        root_cause: temp.root,
+        corrective_action: temp.correct,
+        verification: 'Inspected by site QAQC engineering team.',
+        closed_by: status === 'closed' ? 'u-admin' : undefined,
+        closed_date: closedDate,
+        inspection_date: createdDate.toISOString().split('T')[0],
+        due_date: dueDate.toISOString().split('T')[0],
+        inspector_id: 'u-inspector',
+        contractor_id: 'u-contractor',
+        assigned_to: 'u-eng',
+        created_at: createdDate.toISOString(),
+        updated_at: closedDate ? new Date(closedDate).toISOString() : createdDate.toISOString(),
+        form_responses: {
+          pass_fail: status === 'closed' ? 'pass' : 'fail',
+          rating: status === 'closed' ? 5 : 2,
+          req_met: status === 'closed' ? 'yes' : 'no'
+        }
+      });
+      snagCounter++;
+    }
+  });
+
+  facilityNodes.forEach((facilityNode) => {
+    const snagsToCreate = Math.floor(Math.random() * 6) + 12;
+    for (let k = 0; k < snagsToCreate; k++) {
+      const commonTemps = defectTemplates.filter(t => t.room === facilityNode.name || ['Pump Room', 'Electrical Room', 'External Roads', 'Children\'s Play Area', 'Street Lighting', 'Boundary Wall'].includes(t.room));
+      const temp = commonTemps.length > 0 
+        ? commonTemps[Math.floor(Math.random() * commonTemps.length)]
+        : defectTemplates[Math.floor(Math.random() * defectTemplates.length)];
+
+      const rVal = Math.random();
+      let status = 'open';
+      if (rVal < 0.25) status = 'open';
+      else if (rVal < 0.45) status = 'in_progress';
+      else if (rVal < 0.60) status = 'rectified';
+      else if (rVal < 0.75) status = 'qa_verification';
+      else status = 'closed';
+
+      const daysAgo = Math.floor(Math.random() * 30) + 1;
+      const createdDate = new Date();
+      createdDate.setDate(createdDate.getDate() - daysAgo);
+
+      const dueDate = new Date(createdDate);
+      dueDate.setDate(dueDate.getDate() + 14);
+
+      let closedDate: string | undefined = undefined;
+      if (status === 'closed') {
+        const closedDays = Math.floor(Math.random() * daysAgo);
+        const cDate = new Date(createdDate);
+        cDate.setDate(cDate.getDate() + closedDays);
+        closedDate = cDate.toISOString().split('T')[0];
+      }
+
+      itemsToAdd.push({
+        id: `snag-izd-${snagCounter}`,
+        snag_number: `IZD-SNAG-${String(snagCounter).padStart(4, '0')}`,
+        company_id: DEFAULT_ORG_ID,
+        villa_id: 'node-izd-common',
+        location_node_id: facilityNode.id,
+        category_id: temp.cat,
+        title: temp.title,
+        description: temp.desc,
+        priority: temp.priority as any,
+        status: status as any,
+        location: 'Common Areas',
+        room: facilityNode.name,
+        remarks: 'Identified during facility commissioning walk.',
+        root_cause: temp.root,
+        corrective_action: temp.correct,
+        verification: 'Inspected by QA/QC team lead.',
+        closed_by: status === 'closed' ? 'u-admin' : undefined,
+        closed_date: closedDate,
+        inspection_date: createdDate.toISOString().split('T')[0],
+        due_date: dueDate.toISOString().split('T')[0],
+        inspector_id: 'u-inspector',
+        contractor_id: 'u-contractor',
+        assigned_to: 'u-eng',
+        created_at: createdDate.toISOString(),
+        updated_at: closedDate ? new Date(closedDate).toISOString() : createdDate.toISOString(),
+        form_responses: {
+          pass_fail: status === 'closed' ? 'pass' : 'fail',
+          rating: status === 'closed' ? 5 : 3,
+          req_met: status === 'closed' ? 'yes' : 'no'
+        }
+      });
+      snagCounter++;
+    }
+  });
+
+  localStorage.setItem('snaglist_items', JSON.stringify([...snagsList, ...itemsToAdd]));
+  console.log(`Seeded ${itemsToAdd.length} snags successfully!`);
+};
+
 // Helper to seed localStorage
 export const initializeMockDatabase = () => {
   if (typeof window === 'undefined') return;
@@ -523,6 +881,13 @@ export const initializeMockDatabase = () => {
   
   if (isSeeded && !hasNodes) {
     runLegacyDatabaseMigration();
+  }
+
+  // Trigger Izdihar Project seeding if not present yet
+  const isIzdiharSeeded = localStorage.getItem('snaglist_seeded_izdihar');
+  if (isSeeded && !isIzdiharSeeded) {
+    seedIzdiharProject();
+    localStorage.setItem('snaglist_seeded_izdihar', 'true');
   }
 
   if (isSeeded) return;
@@ -829,6 +1194,10 @@ export const initializeMockDatabase = () => {
   recomputeRates(villas, inspectionItems, projects);
 
   localStorage.setItem('snaglist_seeded', 'true');
+  
+  // Seed Izdihar Project
+  seedIzdiharProject();
+  localStorage.setItem('snaglist_seeded_izdihar', 'true');
 };
 
 const recomputeRates = (villas: Villa[], items: InspectionItem[], projects: Project[]) => {
