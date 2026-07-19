@@ -859,7 +859,7 @@ export const dbService = {
     if (typeof window === 'undefined') return null;
     const email = localStorage.getItem('snaglist_current_user_email');
     if (!email) return null;
-    const profiles = dbService.getProfiles();
+    const profiles: Profile[] = JSON.parse(localStorage.getItem('snaglist_profiles') || '[]');
     return profiles.find(p => p.email === email) || null;
   },
 
