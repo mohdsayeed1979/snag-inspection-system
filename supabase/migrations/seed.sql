@@ -70,14 +70,14 @@ INSERT INTO public.villas (id, block_id, villa_number, owner, contractor, consul
 -- Block C (Villas 21 to 30)
 ('e0000000-0000-0000-0000-000000000021', 'b0000000-0000-0000-0000-000000000003', 'Villa 21', 'Hassan Al-Shammari', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
 ('e0000000-0000-0000-0000-000000000022', 'b0000000-0000-0000-0000-000000000003', 'Villa 22', 'Amal Al-Ajmi', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
-('e0000000-0000-0000-0000-000000000023', 'b0000000-0000-0000-0000-000000000003', 'Rashed Al-Marri', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
-('e0000000-0000-0000-0000-000000000024', 'b0000000-0000-0000-0000-000000000003', 'Mona Al-Suwaidi', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
-('e0000000-0000-0000-0000-000000000025', 'b0000000-0000-0000-0000-000000000003', 'Saleh Al-Harthi', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
-('e0000000-0000-0000-0000-000000000026', 'b0000000-0000-0000-0000-000000000003', 'Jawaher Al-Mansoori', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
-('e0000000-0000-0000-0000-000000000027', 'b0000000-0000-0000-0000-000000000003', 'Sultan Al-Otaibi', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
-('e0000000-0000-0000-0000-000000000028', 'b0000000-0000-0000-0000-000000000003', 'Deema Al-Sabhan', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
-('e0000000-0000-0000-0000-000000000029', 'b0000000-0000-0000-0000-000000000003', 'Waleed Al-Bawardi', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
-('e0000000-0000-0000-0000-000000000030', 'b0000000-0000-0000-0000-000000000003', 'Ghada Al-Jasser', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0)
+('e0000000-0000-0000-0000-000000000023', 'b0000000-0000-0000-0000-000000000003', 'Villa 23', 'Rashed Al-Marri', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
+('e0000000-0000-0000-0000-000000000024', 'b0000000-0000-0000-0000-000000000003', 'Villa 24', 'Mona Al-Suwaidi', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
+('e0000000-0000-0000-0000-000000000025', 'b0000000-0000-0000-0000-000000000003', 'Villa 25', 'Saleh Al-Harthi', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
+('e0000000-0000-0000-0000-000000000026', 'b0000000-0000-0000-0000-000000000003', 'Villa 26', 'Jawaher Al-Mansoori', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
+('e0000000-0000-0000-0000-000000000027', 'b0000000-0000-0000-0000-000000000003', 'Villa 27', 'Sultan Al-Otaibi', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
+('e0000000-0000-0000-0000-000000000028', 'b0000000-0000-0000-0000-000000000003', 'Villa 28', 'Deema Al-Sabhan', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
+('e0000000-0000-0000-0000-000000000029', 'b0000000-0000-0000-0000-000000000003', 'Villa 29', 'Waleed Al-Bawardi', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0),
+('e0000000-0000-0000-0000-000000000030', 'b0000000-0000-0000-0000-000000000003', 'Villa 30', 'Ghada Al-Jasser', 'Saudi Construction Co.', 'Khatib & Alami', 'Eng. Khalid', 0)
 ON CONFLICT (block_id, villa_number) DO NOTHING;
 
 -- 6. Seed Sample Snag Items (Around 10 items per Villa, total 300+ items with random status/priority/category)
