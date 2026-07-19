@@ -1,8 +1,8 @@
-// Admin Control Panel (Categories, Templates, User Profiles, Settings)
+// Admin Control Panel (Categories, Templates, User Profiles, Company Settings)
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { dbService, Profile, Project, Block, InspectionCategory, InspectionTemplate, Villa } from '@/lib/db';
+import { dbService, Profile, Project, Block, InspectionCategory, InspectionTemplate, Company } from '@/lib/db';
 import { useAuth } from '@/context/AuthContext';
 import { 
   ShieldAlert, 
@@ -15,19 +15,19 @@ import {
   Save, 
   Check,
   Building,
-  Mail
+  Mail,
+  Palette,
+  Settings
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function AdminPanel() {
-  const { user, canManageSettings } = useAuth();
+  const { user, currentCompany, canManageSettings } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'projects' | 'users' | 'templates' | 'settings'>('templates');
+  const [activeTab, setActiveTab] = useState<'users' | 'templates' | 'settings'>('templates');
 
   // DB Data States
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [blocks, setBlocks] = useState<Block[]>([]);
   const [categories, setCategories] = useState<InspectionCategory[]>([]);
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   
@@ -38,20 +38,24 @@ export default function AdminPanel() {
   const [newTemplateCat, setNewTemplateCat] = useState('');
   const [newTemplateItem, setNewTemplateItem] = useState('');
 
-  const [newBlockName, setNewBlockName] = useState('');
-  const [newBlockDesc, setNewBlockDesc] = useState('');
-
-  // Company Settings State
-  const [companyName, setCompanyName] = useState('Villa Snag Ltd');
-  const [consultantName, setConsultantName] = useState('Khatib & Alami');
-  const [logoUrl, setLogoUrl] = useState('https://images.unsplash.com/photo-1590483736148-3c1a5e59b994?auto=format&fit=crop&w=150&q=80');
-  const [emailTemplate, setEmailTemplate] = useState('Dear Contractor,\n\nA new snag item has been recorded. Please check and rectify.');
+  // Company Settings Form State
+  const [companyName, setCompanyName] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [regNumber, setRegNumber] = useState('');
+  const [vatNumber, setVatNumber] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [country, setCountry] = useState('');
+  const [city, setCity] = useState('');
+  const [primaryColor, setPrimaryColor] = useState('#6A89A7');
+  const [secondaryColor, setSecondaryColor] = useState('#E0E7FF');
+  const [reportHeader, setReportHeader] = useState('');
+  const [reportFooter, setReportFooter] = useState('');
+  
   const [saveStatus, setSaveStatus] = useState(false);
 
   const loadData = () => {
     setProfiles(dbService.getProfiles());
-    setProjects(dbService.getProjects());
-    setBlocks(dbService.getBlocks());
     
     const cats = dbService.getCategories();
     setCategories(cats);
@@ -60,6 +64,22 @@ export default function AdminPanel() {
     }
     
     setTemplates(dbService.getTemplates());
+
+    // Bind company settings
+    if (currentCompany) {
+      setCompanyName(currentCompany.name);
+      setLogoUrl(currentCompany.logo_url || '');
+      setRegNumber(currentCompany.registration_number || '');
+      setVatNumber(currentCompany.vat_number || '');
+      setPhone(currentCompany.phone || '');
+      setEmail(currentCompany.email || '');
+      setCountry(currentCompany.country || '');
+      setCity(currentCompany.city || '');
+      setPrimaryColor(currentCompany.primary_color || '#6A89A7');
+      setSecondaryColor(currentCompany.secondary_color || '#E0E7FF');
+      setReportHeader(currentCompany.report_header || '');
+      setReportFooter(currentCompany.report_footer || '');
+    }
   };
 
   useEffect(() => {
@@ -69,7 +89,7 @@ export default function AdminPanel() {
       return;
     }
     loadData();
-  }, [user]);
+  }, [user, currentCompany]);
 
   // Form actions
   const handleAddCategory = (e: React.FormEvent) => {
@@ -96,29 +116,14 @@ export default function AdminPanel() {
     loadData();
   };
 
-  const handleAddBlock = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newBlockName || projects.length === 0) return;
-
-    dbService.addBlock({
-      project_id: projects[0].id,
-      name: newBlockName,
-      description: newBlockDesc
-    });
-
-    setNewBlockName('');
-    setNewBlockDesc('');
-    loadData();
-  };
-
   // Switch simulated user role in public profiles
   const handleUserRoleChange = (userId: string, newRole: any) => {
-    const list = [...profiles];
-    const index = list.findIndex(p => p.id === userId);
+    const list = JSON.parse(localStorage.getItem('snaglist_profiles') || '[]');
+    const index = list.findIndex((p: any) => p.id === userId);
     if (index !== -1) {
       list[index].role = newRole;
-      setProfiles(list);
       localStorage.setItem('snaglist_profiles', JSON.stringify(list));
+      setProfiles(dbService.getProfiles());
       
       // If current user modified themselves, reload auth context
       const currentUserEmail = localStorage.getItem('snaglist_current_user_email');
@@ -130,19 +135,40 @@ export default function AdminPanel() {
 
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentCompany) return;
+
+    const updatedCompany: Company = {
+      ...currentCompany,
+      name: companyName,
+      logo_url: logoUrl || undefined,
+      registration_number: regNumber || undefined,
+      vat_number: vatNumber || undefined,
+      phone: phone || undefined,
+      email: email || undefined,
+      country: country || undefined,
+      city: city || undefined,
+      primary_color: primaryColor,
+      secondary_color: secondaryColor,
+      report_header: reportHeader || undefined,
+      report_footer: reportFooter || undefined
+    };
+
+    dbService.updateCompanySettings(updatedCompany);
     setSaveStatus(true);
-    setTimeout(() => setSaveStatus(false), 2000);
+    setTimeout(() => {
+      setSaveStatus(false);
+      window.location.reload(); // refresh layout shell colors
+    }, 1500);
   };
 
   const tabs = [
     { id: 'templates', name: 'Inspection Templates', icon: CheckSquare },
     { id: 'users', name: 'Users & Roles', icon: Users },
-    { id: 'projects', name: 'Projects & Blocks', icon: Building2 },
     { id: 'settings', name: 'Company Settings', icon: FolderLock }
   ] as const;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-200">
       <div>
         <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
           <ShieldAlert className="w-5 h-5 text-primary" /> Admin Control Panel
@@ -169,9 +195,10 @@ export default function AdminPanel() {
 
       {/* TAB CONTENTS */}
       <div className="bg-card border border-border p-6 rounded-2xl shadow-sm">
+        
         {/* 1. INSPECTION TEMPLATES */}
         {activeTab === 'templates' && (
-          <div className="space-y-8">
+          <div className="space-y-8 animate-in fade-in duration-150">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Category creation */}
               <div className="space-y-4">
@@ -288,7 +315,7 @@ export default function AdminPanel() {
 
         {/* 2. USERS & ROLES */}
         {activeTab === 'users' && (
-          <div className="space-y-4">
+          <div className="space-y-4 animate-in fade-in duration-150">
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">User Management & Permissions Control</h3>
             <div className="border border-border rounded-2xl overflow-hidden shadow-sm">
               <table className="w-full text-left border-collapse text-xs">
@@ -296,32 +323,35 @@ export default function AdminPanel() {
                   <tr className="bg-muted/30 border-b border-border text-[10px] font-bold text-muted-foreground uppercase">
                     <th className="px-5 py-3.5">Name</th>
                     <th className="px-5 py-3.5">Email</th>
-                    <th className="px-5 py-3.5">Phone</th>
+                    <th className="px-5 py-3.5">Tenant Company</th>
                     <th className="px-5 py-3.5">Role Permission</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border text-foreground">
-                  {profiles.map((p) => (
-                    <tr key={p.id} className="hover:bg-muted/10">
-                      <td className="px-5 py-3.5 font-bold">{p.full_name}</td>
-                      <td className="px-5 py-3.5 text-muted-foreground">{p.email}</td>
-                      <td className="px-5 py-3.5 text-muted-foreground">{p.phone || 'No phone'}</td>
-                      <td className="px-5 py-3.5">
-                        <select
-                          value={p.role}
-                          onChange={(e) => handleUserRoleChange(p.id, e.target.value)}
-                          className="bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground font-semibold cursor-pointer outline-none focus:border-primary"
-                        >
-                          <option value="super_admin">Super Admin</option>
-                          <option value="project_manager">Project Manager</option>
-                          <option value="site_engineer">Site Engineer</option>
-                          <option value="qaqc_inspector">QA/QC Inspector</option>
-                          <option value="contractor">Contractor</option>
-                          <option value="read_only">Read Only User</option>
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
+                  {profiles.map((p) => {
+                    const comp = dbService.getCompanyById(p.company_id);
+                    return (
+                      <tr key={p.id} className="hover:bg-muted/10">
+                        <td className="px-5 py-3.5 font-bold">{p.full_name}</td>
+                        <td className="px-5 py-3.5 text-muted-foreground">{p.email}</td>
+                        <td className="px-5 py-3.5 text-muted-foreground font-semibold">{comp ? comp.name : 'DEF_ORG'}</td>
+                        <td className="px-5 py-3.5">
+                          <select
+                            value={p.role}
+                            onChange={(e) => handleUserRoleChange(p.id, e.target.value)}
+                            className="bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground font-semibold cursor-pointer outline-none focus:border-primary"
+                          >
+                            <option value="super_admin">Super Admin</option>
+                            <option value="project_manager">Project Manager</option>
+                            <option value="site_engineer">Site Engineer</option>
+                            <option value="qaqc_inspector">QA/QC Inspector</option>
+                            <option value="contractor">Contractor</option>
+                            <option value="read_only">Read Only User</option>
+                          </select>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -333,80 +363,19 @@ export default function AdminPanel() {
           </div>
         )}
 
-        {/* 3. PROJECTS & BLOCKS */}
-        {activeTab === 'projects' && (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Active Projects</h3>
-              {projects.map((proj) => (
-                <div key={proj.id} className="p-4 border border-border rounded-2xl mt-3 flex justify-between items-center bg-muted/10">
-                  <div>
-                    <h4 className="text-sm font-bold text-foreground">{proj.name}</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">{proj.description}</p>
-                    <div className="mt-2 text-[10px] text-muted-foreground space-x-4">
-                      <span>Owner: <strong>{proj.owner}</strong></span>
-                      <span>Contractor: <strong>{proj.contractor}</strong></span>
-                      <span>Consultant: <strong>{proj.consultant}</strong></span>
-                    </div>
-                  </div>
-                  <div className="bg-primary/10 text-primary font-black px-4 py-2 rounded-xl text-sm border border-primary/25">
-                    {proj.completion_rate}%
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-4 border-t border-border space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Add New Block Sector</h3>
-              <form onSubmit={handleAddBlock} className="space-y-3 bg-muted/20 p-4 rounded-2xl border border-border max-w-lg">
-                <div>
-                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Block Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Block D"
-                    value={newBlockName}
-                    onChange={(e) => setNewBlockName(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground outline-none focus:border-primary"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Description / Sector Scope</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Garden Sector Villas"
-                    value={newBlockDesc}
-                    onChange={(e) => setNewBlockDesc(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground outline-none focus:border-primary"
-                  />
-                </div>
-                <button type="submit" className="w-full py-2 bg-primary hover:bg-primary/95 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-primary/10">
-                  <Plus className="w-4 h-4" /> Create Block Sector
-                </button>
-              </form>
-
-              {/* Display existing blocks */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-                {blocks.map((b) => (
-                  <div key={b.id} className="p-3 bg-background border border-border rounded-xl">
-                    <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <Building className="w-3.5 h-3.5 text-primary" /> {b.name}
-                    </h4>
-                    <p className="text-[10px] text-muted-foreground mt-1">{b.description || 'No description'}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 4. COMPANY SETTINGS */}
+        {/* 3. COMPANY SETTINGS */}
         {activeTab === 'settings' && (
-          <form onSubmit={handleSaveSettings} className="space-y-6 max-w-xl">
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4">Enterprise Logo & Branding Settings</h3>
-              
+          <form onSubmit={handleSaveSettings} className="space-y-8 animate-in fade-in duration-150">
+            
+            {/* Meta and branding split layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Left Column - Core Meta Details */}
               <div className="space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Settings className="w-4 h-4 text-primary" />
+                  Organization Details
+                </h3>
+
                 <div>
                   <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Company Name</label>
                   <input
@@ -418,19 +387,81 @@ export default function AdminPanel() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Lead Consultant Name</label>
-                  <input
-                    type="text"
-                    value={consultantName}
-                    onChange={(e) => setConsultantName(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground outline-none focus:border-primary"
-                    required
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Registration Number</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. CR-40301294"
+                      value={regNumber}
+                      onChange={(e) => setRegNumber(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">VAT Number</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. VAT-3004812"
+                      value={vatNumber}
+                      onChange={(e) => setVatNumber(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Contact Phone</label>
+                    <input
+                      type="text"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Contact Email</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Country</label>
+                    <input
+                      type="text"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">City</label>
+                    <input
+                      type="text"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column - Brand Customization */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Palette className="w-4 h-4 text-primary" />
+                  Branding Customization
+                </h3>
+
                 <div>
-                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Branding Logo URL</label>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Company Logo Link (URL)</label>
                   <input
                     type="text"
                     value={logoUrl}
@@ -439,14 +470,61 @@ export default function AdminPanel() {
                   />
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Primary brand Color</label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="color"
+                        value={primaryColor}
+                        onChange={(e) => setPrimaryColor(e.target.value)}
+                        className="w-8 h-8 rounded-lg outline-none cursor-pointer border border-border shrink-0"
+                      />
+                      <input
+                        type="text"
+                        value={primaryColor}
+                        onChange={(e) => setPrimaryColor(e.target.value)}
+                        className="w-full bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Secondary brand Color</label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="color"
+                        value={secondaryColor}
+                        onChange={(e) => setSecondaryColor(e.target.value)}
+                        className="w-8 h-8 rounded-lg outline-none cursor-pointer border border-border shrink-0"
+                      />
+                      <input
+                        type="text"
+                        value={secondaryColor}
+                        onChange={(e) => setSecondaryColor(e.target.value)}
+                        className="w-full bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* PDF Header / Footer customizations */}
                 <div>
-                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5 flex items-center gap-1">
-                    <Mail className="w-3.5 h-3.5" /> Email Notification Template
-                  </label>
-                  <textarea
-                    value={emailTemplate}
-                    onChange={(e) => setEmailTemplate(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground outline-none focus:border-primary h-24"
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">PDF Export Header Title</label>
+                  <input
+                    type="text"
+                    value={reportHeader}
+                    onChange={(e) => setReportHeader(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">PDF Export Footer Notes</label>
+                  <input
+                    type="text"
+                    value={reportFooter}
+                    onChange={(e) => setReportFooter(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground outline-none focus:border-primary"
                   />
                 </div>
               </div>
@@ -457,11 +535,11 @@ export default function AdminPanel() {
                 type="submit" 
                 className="flex items-center gap-2 bg-primary hover:bg-primary/95 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-md shadow-primary/10"
               >
-                <Save className="w-4 h-4" /> Save Settings
+                <Save className="w-4 h-4" /> Save Enterprise Settings
               </button>
               {saveStatus && (
                 <span className="text-xs text-success font-bold flex items-center gap-1">
-                  <Check className="w-4 h-4" /> Settings updated successfully
+                  <Check className="w-4 h-4" /> Settings updated successfully!
                 </span>
               )}
             </div>

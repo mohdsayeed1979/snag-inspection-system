@@ -1,13 +1,15 @@
-// Authentication Context with Role-Based Access Control Helpers
+// Authentication Context with Role-Based Access Control and Company Separation
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Profile, SEED_PROFILES, initializeMockDatabase } from '@/lib/db';
+import { Profile, Company, SEED_PROFILES, initializeMockDatabase, dbService } from '@/lib/db';
 
 interface AuthContextType {
   user: Profile | null;
   allProfiles: Profile[];
+  currentCompany: Company | null;
   switchUser: (email: string) => void;
+  switchCompany: (companyId: string) => void;
   isLoading: boolean;
   canCreateSnag: () => boolean;
   canEditSnag: () => boolean;
@@ -22,13 +24,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<Profile | null>(null);
   const [allProfiles, setAllProfiles] = useState<Profile[]>(SEED_PROFILES);
+  const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const loadCompanyContext = (profile: Profile) => {
+    // Determine the active company
+    let companyId = profile.company_id;
+    if (profile.role === 'super_admin') {
+      const override = localStorage.getItem('snaglist_override_company_id');
+      if (override) {
+        companyId = override;
+      }
+    }
+
+    const company = dbService.getCompanyById(companyId);
+    setCurrentCompany(company || dbService.getCompanyById('c0000000-0000-0000-0000-000000000000') || null);
+  };
 
   useEffect(() => {
     // Initializing the mock DB on application mount
     initializeMockDatabase();
     
-    // Load current user from local storage or set default (PM or Admin)
+    // Load current user from local storage or set default
     const storedUserEmail = localStorage.getItem('snaglist_current_user_email');
     const profilesJson = localStorage.getItem('snaglist_profiles');
     
@@ -42,19 +59,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
+    let activeUser: Profile;
     if (storedUserEmail) {
       const found = loadedProfiles.find(p => p.email === storedUserEmail);
       if (found) {
-        setUser(found);
+        activeUser = found;
       } else {
-        setUser(loadedProfiles[0]); // default to first profile (Admin)
+        activeUser = loadedProfiles[0];
       }
     } else {
-      // Default to Project Manager as it is the most standard role to view the app
       const defaultUser = loadedProfiles.find(p => p.role === 'project_manager') || loadedProfiles[0];
-      setUser(defaultUser);
+      activeUser = defaultUser;
       localStorage.setItem('snaglist_current_user_email', defaultUser.email);
     }
+
+    setUser(activeUser);
+    loadCompanyContext(activeUser);
     setIsLoading(false);
   }, []);
 
@@ -63,6 +83,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (found) {
       setUser(found);
       localStorage.setItem('snaglist_current_user_email', found.email);
+      // Reset company override when changing users
+      localStorage.removeItem('snaglist_override_company_id');
+      loadCompanyContext(found);
+      
+      // Force page reload to clear cache and refresh query results
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
+    }
+  };
+
+  const switchCompany = (companyId: string) => {
+    if (user && user.role === 'super_admin') {
+      localStorage.setItem('snaglist_override_company_id', companyId);
+      const company = dbService.getCompanyById(companyId);
+      setCurrentCompany(company || null);
+      
+      // Reload page to re-render context and trigger stats refresh
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
     }
   };
 
@@ -101,8 +142,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Contractors have restricted state flow
     if (user.role === 'contractor') {
-      // Contractors can mark things as in_progress or rectified (ready for inspection)
-      // They cannot close snags or bypass QA verification
       return ['in_progress', 'rectified'].includes(targetStatus);
     }
 
@@ -118,7 +157,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider value={{
       user,
       allProfiles,
+      currentCompany,
       switchUser,
+      switchCompany,
       isLoading,
       canCreateSnag,
       canEditSnag,

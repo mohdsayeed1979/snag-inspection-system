@@ -1,11 +1,11 @@
-// Responsive Layout Shell (Sidebar + Header + Notifications + Role Switcher)
+// Responsive Layout Shell (Sidebar + Header + Notifications + Role & Company Switchers)
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { dbService, Notification, InspectionItem } from '@/lib/db';
+import { dbService, Notification, InspectionItem, Company } from '@/lib/db';
 import { 
   LayoutDashboard, 
   Building2, 
@@ -21,7 +21,8 @@ import {
   ChevronRight,
   TrendingUp,
   FileCheck,
-  Search
+  Search,
+  Globe
 } from 'lucide-react';
 
 interface LayoutShellProps {
@@ -29,13 +30,21 @@ interface LayoutShellProps {
 }
 
 export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
-  const { user, allProfiles, switchUser, isLoading } = useAuth();
+  const { user, allProfiles, switchUser, currentCompany, switchCompany, isLoading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [companies, setCompanies] = useState<Company[]>([]);
+
+  // Load companies list for Super Admin switcher
+  useEffect(() => {
+    if (user && user.role === 'super_admin') {
+      setCompanies(dbService.getCompanies());
+    }
+  }, [user]);
 
   // Load and apply theme
   useEffect(() => {
@@ -83,13 +92,15 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
     const q = val.toLowerCase();
     const allItems = dbService.getInspectionItems();
     const matched = allItems.filter(item => {
-      const villaObj = dbService.getVillaById(item.villa_id);
+      // Find parent project node name (e.g. Room/Villa)
+      const nodes = dbService.getProjectNodes();
+      const nodeObj = nodes.find(n => n.id === item.location_node_id || n.id === item.villa_id);
       return (
         item.snag_number.toLowerCase().includes(q) ||
         item.title.toLowerCase().includes(q) ||
         (item.location && item.location.toLowerCase().includes(q)) ||
         (item.room && item.room.toLowerCase().includes(q)) ||
-        (villaObj && villaObj.villa_number.toLowerCase().includes(q))
+        (nodeObj && nodeObj.name.toLowerCase().includes(q))
       );
     }).slice(0, 5); // limit to 5 results
     setGlobalResults(matched);
@@ -112,7 +123,7 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
 
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['super_admin', 'project_manager', 'site_engineer', 'qaqc_inspector', 'contractor', 'read_only'] },
-    { name: 'Villas & Blocks', href: '/villas', icon: Building2, roles: ['super_admin', 'project_manager', 'site_engineer', 'qaqc_inspector', 'contractor', 'read_only'] },
+    { name: 'Projects Explorer', href: '/villas', icon: Building2, roles: ['super_admin', 'project_manager', 'site_engineer', 'qaqc_inspector', 'contractor', 'read_only'] },
     { name: 'Admin Control', href: '/admin', icon: ShieldCheck, roles: ['super_admin', 'project_manager'] }
   ];
 
@@ -120,11 +131,14 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
 
   const formatPathname = () => {
     if (pathname === '/dashboard') return 'Dashboard';
-    if (pathname === '/villas') return 'Villas Explorer';
-    if (pathname.startsWith('/villas/')) return 'Villa Inspection';
+    if (pathname === '/villas') return 'Projects Explorer';
+    if (pathname.startsWith('/villas/')) return 'Project Details';
     if (pathname === '/admin') return 'Admin Panel';
     return 'Home';
   };
+
+  // Custom branding colors from company settings
+  const primaryBgColor = currentCompany?.primary_color || '#6A89A7';
 
   if (isLoading) {
     return (
@@ -142,8 +156,14 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
       {/* 1. Sidebar for Desktop */}
       <aside className="hidden md:flex md:flex-col md:w-64 bg-dark text-dark-foreground border-r border-border shrink-0">
         <div className="h-16 flex items-center px-6 border-b border-muted/20 gap-3">
-          <FileCheck className="w-6 h-6 text-accent" />
-          <span className="font-bold text-lg tracking-wider text-white">VILLA SNAG</span>
+          {currentCompany?.logo_url ? (
+            <img src={currentCompany.logo_url} alt="Logo" className="w-6 h-6 object-contain rounded-md" />
+          ) : (
+            <FileCheck className="w-6 h-6 text-accent" />
+          )}
+          <span className="font-bold text-sm tracking-wider text-white uppercase truncate">
+            {currentCompany?.name || 'INSPECTION PLATFORM'}
+          </span>
         </div>
         
         <nav className="flex-1 py-6 px-4 space-y-1.5 overflow-y-auto">
@@ -155,9 +175,10 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
                 href={item.href}
                 className={`flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                   isActive 
-                    ? 'bg-primary text-white shadow-md shadow-primary/20 scale-[1.02]' 
+                    ? 'text-white shadow-md scale-[1.02]' 
                     : 'text-dark-foreground/80 hover:bg-white/10 hover:text-white'
                 }`}
+                style={isActive ? { backgroundColor: primaryBgColor } : {}}
               >
                 <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-accent'}`} />
                 {item.name}
@@ -191,8 +212,14 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
           <div className="relative flex flex-col w-64 max-w-xs bg-dark text-dark-foreground shadow-2xl animate-in slide-in-from-left duration-200">
             <div className="h-16 flex items-center justify-between px-6 border-b border-muted/20">
               <div className="flex items-center gap-2">
-                <FileCheck className="w-5 h-5 text-accent" />
-                <span className="font-bold text-white tracking-wide">VILLA SNAG</span>
+                {currentCompany?.logo_url ? (
+                  <img src={currentCompany.logo_url} alt="Logo" className="w-5 h-5 object-contain rounded-md" />
+                ) : (
+                  <FileCheck className="w-5 h-5 text-accent" />
+                )}
+                <span className="font-bold text-white tracking-wide truncate uppercase text-sm">
+                  {currentCompany?.name || 'INSPECTION'}
+                </span>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="p-1 rounded-lg hover:bg-white/10 text-white">
                 <X className="w-5 h-5" />
@@ -208,9 +235,10 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
                     onClick={() => setSidebarOpen(false)}
                     className={`flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                       isActive 
-                        ? 'bg-primary text-white' 
+                        ? 'text-white' 
                         : 'text-dark-foreground/80 hover:bg-white/10 hover:text-white'
                     }`}
+                    style={isActive ? { backgroundColor: primaryBgColor } : {}}
                   >
                     <item.icon className="w-5 h-5 text-accent" />
                     {item.name}
@@ -249,7 +277,7 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
             
             {/* Breadcrumb / Title */}
             <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
-              <span>SnagList</span>
+              <span>Inspection Platform</span>
               <ChevronRight className="w-4 h-4" />
               <span className="font-semibold text-foreground">{formatPathname()}</span>
             </div>
@@ -268,7 +296,8 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
               {globalResults.length > 0 && (
                 <div className="absolute left-0 mt-2 w-80 bg-card border border-border rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto divide-y divide-border">
                   {globalResults.map((item) => {
-                    const villaObj = dbService.getVillaById(item.villa_id);
+                    const nodes = dbService.getProjectNodes();
+                    const nodeObj = nodes.find(n => n.id === item.location_node_id || n.id === item.villa_id);
                     return (
                       <div
                         key={item.id}
@@ -278,7 +307,7 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
                         <div className="flex justify-between items-center">
                           <span className="text-[10px] font-bold text-primary">{item.snag_number}</span>
                           <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-semibold text-muted-foreground">
-                            {villaObj?.villa_number || 'Villa'}
+                            {nodeObj?.name || 'Unit'}
                           </span>
                         </div>
                         <p className="text-xs font-semibold text-foreground truncate mt-1">{item.title}</p>
@@ -291,11 +320,30 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
             </div>
           </div>
 
+          <div className="flex items-center gap-2 md:gap-4">
+            {/* Company Tenant Switcher (Super Admin only) */}
+            {user?.role === 'super_admin' && companies.length > 0 && (
+              <div className="flex items-center gap-1.5 border border-border bg-background px-3 py-1.5 rounded-xl text-xs shadow-sm">
+                <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="font-semibold text-muted-foreground hidden md:inline">Tenant:</span>
+                <select
+                  value={currentCompany?.id || ''}
+                  onChange={(e) => switchCompany(e.target.value)}
+                  className="bg-transparent font-medium text-foreground outline-none cursor-pointer focus:ring-0"
+                >
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.id} className="bg-card text-foreground">
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-          <div className="flex items-center gap-4">
             {/* Simulated Role Selector (FOR EVALUATION PURPOSE) */}
             <div className="flex items-center gap-2 border border-border bg-background px-3 py-1.5 rounded-xl text-xs shadow-sm">
-              <span className="font-semibold text-muted-foreground">Role:</span>
+              <Users className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="font-semibold text-muted-foreground hidden md:inline">Profile:</span>
               <select
                 value={user?.email || ''}
                 onChange={(e) => switchUser(e.target.value)}
@@ -338,7 +386,7 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
                   <div className="max-h-64 overflow-y-auto divide-y divide-border">
                     {notifications.length === 0 ? (
                       <div className="p-6 text-center text-xs text-muted-foreground">
-                        No notifications at the moment.
+                        No notifications.
                       </div>
                     ) : (
                       notifications.map((notif) => (

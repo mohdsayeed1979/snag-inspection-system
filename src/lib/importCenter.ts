@@ -12,7 +12,7 @@ export interface ImportError {
 export interface ImportResult {
   villaName: string;
   vesselId?: string;
-  itemsParsed: Omit<InspectionItem, 'id' | 'snag_number' | 'created_at' | 'updated_at'>[];
+  itemsParsed: Omit<InspectionItem, 'id' | 'snag_number' | 'company_id' | 'created_at' | 'updated_at'>[];
   errors: ImportError[];
 }
 
@@ -32,7 +32,7 @@ export const parseChecklistExcel = async (
 
   let villaName = 'Unknown Villa';
   let matchedVilla: Villa | undefined = undefined;
-  const itemsParsed: Omit<InspectionItem, 'id' | 'snag_number' | 'created_at' | 'updated_at'>[] = [];
+  const itemsParsed: Omit<InspectionItem, 'id' | 'snag_number' | 'company_id' | 'created_at' | 'updated_at'>[] = [];
   const errors: ImportError[] = [];
 
   // 1. Detect format by checking Row 1 or headers
@@ -257,7 +257,7 @@ export const parseChecklistExcel = async (
 };
 
 export const saveImportedItems = (
-  items: Omit<InspectionItem, 'id' | 'snag_number' | 'created_at' | 'updated_at'>[],
+  items: Omit<InspectionItem, 'id' | 'snag_number' | 'company_id' | 'created_at' | 'updated_at'>[],
   userId: string
 ): void => {
   items.forEach(item => {
