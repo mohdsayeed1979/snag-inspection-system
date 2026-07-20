@@ -155,6 +155,9 @@ export interface RoomCheckpoint {
   category_name: string;
   audit_item: string;
   status: 'pending' | 'pass' | 'fail' | 'na';
+  comment?: string;
+  photos?: string[];
+  reason?: string;
   inspected_by?: string;
   inspected_at?: string;
   snag_id?: string; // Link to auto-created Snag if status === 'fail'

@@ -147,7 +147,8 @@ export default function ProjectDetailsPage() {
   const [repairAfterPhotoUrl, setRepairAfterPhotoUrl] = useState('');
   const [repairNotes, setRepairNotes] = useState('');
 
-  // Dynamic Form responses state for active snag
+  // Room Filter State for QA/QC Inspection Sheet
+  const [selectedRoomFilter, setSelectedRoomFilter] = useState<string>('All');
   const [formResponses, setFormResponses] = useState<Record<string, any>>({});
 
   const loadData = () => {
@@ -252,13 +253,18 @@ export default function ProjectDetailsPage() {
     e.preventDefault();
     if (!failingCheckpoint) return;
 
+    if (!failPhotoUrl || !failPhotoUrl.trim()) {
+      alert('Before Photo is MANDATORY when creating a Fail Snag! Please upload or select a photo.');
+      return;
+    }
+
     dbService.markCheckpoint(failingCheckpoint.id, 'fail', {
       title: failTitle,
       description: failDesc,
       priority: failPriority,
       assigned_to: failContractor,
-      due_date: failDueDate,
-      before_photo_url: failPhotoUrl
+      due_date: failDueDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+      before_photo_url: failPhotoUrl.trim()
     }, user || undefined);
 
     setShowFailModal(false);
@@ -700,91 +706,204 @@ export default function ProjectDetailsPage() {
           
           {/* Room QA/QC Inspection Checkpoints Suite */}
           {roomCheckpoints.length > 0 && (
-            <div className="bg-card border border-border p-4 rounded-2xl shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
+            <div className="bg-card border border-border p-5 rounded-3xl shadow-sm space-y-4">
+              
+              {/* Header & Progress Metrics */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-border pb-4">
                 <div>
-                  <h3 className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                    <ClipboardCheck className="w-4 h-4 text-primary" />
-                    Room QA/QC Checkpoints ({roomCheckpoints.filter(c => c.status === 'pass').length}/{roomCheckpoints.length} Passed)
+                  <h3 className="text-sm font-extrabold text-foreground flex items-center gap-2">
+                    <ClipboardCheck className="w-5 h-5 text-primary" />
+                    QA/QC Site Inspection Sheet — {parentNode?.name || 'Selected Area'}
                   </h3>
-                  <p className="text-[11px] text-muted-foreground">Mark PASS, FAIL, or N/A. FAIL automatically creates a Snag Item.</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Click room tabs to filter inspection items. PASS/NA saves instantly. FAIL creates auto snag with mandatory photo.
+                  </p>
+                </div>
+
+                {/* Progress Indicators Bar (Requirement 8) */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-xl text-xs">
+                    <span className="text-[10px] text-muted-foreground font-bold uppercase block">Current View Progress</span>
+                    <span className="font-extrabold text-primary">
+                      {roomCheckpoints.filter(c => {
+                        if (selectedRoomFilter === 'All') return true;
+                        const cpRoom = (c.audit_item.split(':')[0] || c.category_name || '').toLowerCase();
+                        return cpRoom.includes(selectedRoomFilter.toLowerCase()) || c.category_name.toLowerCase().includes(selectedRoomFilter.toLowerCase());
+                      }).filter(c => c.status === 'pass' || c.status === 'fail' || c.status === 'na').length} / {roomCheckpoints.filter(c => {
+                        if (selectedRoomFilter === 'All') return true;
+                        const cpRoom = (c.audit_item.split(':')[0] || c.category_name || '').toLowerCase();
+                        return cpRoom.includes(selectedRoomFilter.toLowerCase()) || c.category_name.toLowerCase().includes(selectedRoomFilter.toLowerCase());
+                      }).length} Completed
+                    </span>
+                  </div>
+
+                  <div className="px-3 py-1.5 bg-success/15 border border-success/30 rounded-xl text-xs">
+                    <span className="text-[10px] text-success font-bold uppercase block">Passed Items</span>
+                    <span className="font-extrabold text-success">
+                      {roomCheckpoints.filter(c => c.status === 'pass').length} Passed
+                    </span>
+                  </div>
+
+                  <div className="px-3 py-1.5 bg-danger/15 border border-danger/30 rounded-xl text-xs">
+                    <span className="text-[10px] text-danger font-bold uppercase block">Failed Snags</span>
+                    <span className="font-extrabold text-danger">
+                      {roomCheckpoints.filter(c => c.status === 'fail').length} Snags
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                {roomCheckpoints.map((cp) => {
-                  const linkedSnag = items.find(i => i.checkpoint_id === cp.id || i.id === cp.snag_id);
+              {/* Room Filter Tabs (Requirement 1 & 6) */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-border/60">
+                {['All', 'Kitchen', 'Bedroom', 'Bathroom', 'Entrance', 'Hall', 'Balcony', 'Electrical DB'].map(rName => {
+                  const countInRoom = roomCheckpoints.filter(c => {
+                    if (rName === 'All') return true;
+                    const cpRoom = (c.audit_item.split(':')[0] || c.category_name || '').toLowerCase();
+                    return cpRoom.includes(rName.toLowerCase()) || c.category_name.toLowerCase().includes(rName.toLowerCase());
+                  }).length;
+
+                  const completedInRoom = roomCheckpoints.filter(c => {
+                    const cpRoom = (c.audit_item.split(':')[0] || c.category_name || '').toLowerCase();
+                    const match = rName === 'All' ? true : (cpRoom.includes(rName.toLowerCase()) || c.category_name.toLowerCase().includes(rName.toLowerCase()));
+                    return match && (c.status === 'pass' || c.status === 'fail' || c.status === 'na');
+                  }).length;
+
+                  if (countInRoom === 0 && rName !== 'All') return null;
+
                   return (
-                    <div key={cp.id} className="p-3 bg-muted/20 border border-border rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded bg-primary/10 text-primary font-bold text-[10px] uppercase">
-                            {cp.category_name}
-                          </span>
-                          <span className="font-bold text-foreground">{cp.audit_item}</span>
-                        </div>
-                        {cp.inspected_by && (
-                          <span className="text-[10px] text-muted-foreground block mt-1">
-                            Inspected by: {cp.inspected_by} on {new Date(cp.inspected_at || '').toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleMarkPass(cp.id)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                            cp.status === 'pass' ? 'bg-success text-success-foreground shadow' : 'bg-card border border-border text-foreground hover:bg-success/20'
-                          }`}
-                        >
-                          PASS
-                        </button>
-
-                        <button
-                          onClick={() => openFailModal(cp)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                            cp.status === 'fail' ? 'bg-danger text-danger-foreground shadow' : 'bg-card border border-border text-foreground hover:bg-danger/20'
-                          }`}
-                        >
-                          FAIL
-                        </button>
-
-                        <button
-                          onClick={() => handleMarkNA(cp.id)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                            cp.status === 'na' ? 'bg-muted-foreground text-background shadow' : 'bg-card border border-border text-muted-foreground hover:bg-muted'
-                          }`}
-                        >
-                          N/A
-                        </button>
-                      </div>
-
-                      {/* Linked Snag Info & Contractor Reinspection Buttons */}
-                      {cp.status === 'fail' && linkedSnag && (
-                        <div className="w-full pt-2 border-t border-border flex items-center justify-between text-[11px]">
-                          <span className="text-danger font-bold">Auto-Created Snag: {linkedSnag.snag_number} ({linkedSnag.status.replace('_', ' ')})</span>
-                          <div className="flex gap-2">
-                            {linkedSnag.reinspection_status === 'ready_for_inspection' && (
-                              <>
-                                <button onClick={() => handleReinspect(linkedSnag.id, true)} className="px-2.5 py-1 bg-success text-success-foreground rounded-lg font-bold text-[10px]">
-                                  Approve & Close
-                                </button>
-                                <button onClick={() => handleReinspect(linkedSnag.id, false)} className="px-2.5 py-1 bg-danger text-danger-foreground rounded-lg font-bold text-[10px]">
-                                  Reject Fix
-                                </button>
-                              </>
-                            )}
-                            {linkedSnag.status !== 'closed' && (
-                              <button onClick={() => handleOpenContractorRepair(linkedSnag.id)} className="px-2.5 py-1 bg-primary text-primary-foreground rounded-lg font-bold text-[10px]">
-                                Contractor Upload Fix
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <button
+                      key={rName}
+                      onClick={() => setSelectedRoomFilter(rName)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all shrink-0 flex items-center gap-1.5 ${
+                        selectedRoomFilter === rName
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'bg-card border border-border text-foreground hover:bg-muted'
+                      }`}
+                    >
+                      <span>{rName}</span>
+                      <span className={`px-1.5 py-0.2 rounded text-[10px] ${
+                        selectedRoomFilter === rName ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {completedInRoom}/{countInRoom}
+                      </span>
+                    </button>
                   );
                 })}
+              </div>
+
+              {/* Checkpoints List */}
+              <div className="space-y-2.5">
+                {roomCheckpoints
+                  .filter(c => {
+                    if (selectedRoomFilter === 'All') return true;
+                    const cpRoom = (c.audit_item.split(':')[0] || c.category_name || '').toLowerCase();
+                    return cpRoom.includes(selectedRoomFilter.toLowerCase()) || c.category_name.toLowerCase().includes(selectedRoomFilter.toLowerCase());
+                  })
+                  .map((cp) => {
+                    const linkedSnag = items.find(i => i.checkpoint_id === cp.id || i.id === cp.snag_id);
+                    return (
+                      <div key={cp.id} className="p-3.5 bg-muted/20 border border-border rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs shadow-xs hover:border-primary/30 transition-all">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary font-extrabold text-[10px] uppercase">
+                              {cp.category_name}
+                            </span>
+
+                            {cp.status === 'pass' && (
+                              <span className="px-2 py-0.5 rounded-md bg-success/20 text-success font-black text-[10px] flex items-center gap-1">
+                                <CheckCircle className="w-[14px] h-[14px]" /> PASS
+                              </span>
+                            )}
+
+                            {cp.status === 'fail' && (
+                              <span className="px-2 py-0.5 rounded-md bg-danger/20 text-danger font-black text-[10px] flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" /> FAIL (SNAG CREATED)
+                              </span>
+                            )}
+
+                            {cp.status === 'na' && (
+                              <span className="px-2 py-0.5 rounded-md bg-muted text-muted-foreground font-bold text-[10px]">
+                                N/A
+                              </span>
+                            )}
+                          </div>
+
+                          <span className="font-extrabold text-foreground block mt-1">{cp.audit_item}</span>
+
+                          {cp.inspected_by && (
+                            <span className="text-[10px] text-muted-foreground block mt-0.5">
+                              Inspected by: {cp.inspected_by} on {new Date(cp.inspected_at || '').toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Interactive PASS / FAIL / NA Actions */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => handleMarkPass(cp.id)}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1 ${
+                              cp.status === 'pass' 
+                                ? 'bg-success text-success-foreground shadow-md ring-2 ring-success/30' 
+                                : 'bg-card border border-border text-foreground hover:bg-success/20'
+                            }`}
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            PASS
+                          </button>
+
+                          <button
+                            onClick={() => openFailModal(cp)}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1 ${
+                              cp.status === 'fail' 
+                                ? 'bg-danger text-danger-foreground shadow-md ring-2 ring-danger/30' 
+                                : 'bg-card border border-border text-foreground hover:bg-danger/20'
+                            }`}
+                          >
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            FAIL
+                          </button>
+
+                          <button
+                            onClick={() => handleMarkNA(cp.id)}
+                            className={`px-3 py-2 rounded-xl text-xs font-black transition-all ${
+                              cp.status === 'na' 
+                                ? 'bg-muted-foreground text-background shadow' 
+                                : 'bg-card border border-border text-muted-foreground hover:bg-muted'
+                            }`}
+                          >
+                            N/A
+                          </button>
+                        </div>
+
+                        {/* Linked Snag Info & Contractor Reinspection Buttons */}
+                        {cp.status === 'fail' && linkedSnag && (
+                          <div className="w-full pt-2.5 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px]">
+                            <span className="text-danger font-bold flex items-center gap-1">
+                              <AlertCircle className="w-3.5 h-3.5" />
+                              Auto-Created Snag: {linkedSnag.snag_number} ({linkedSnag.status.replace('_', ' ')})
+                            </span>
+                            <div className="flex gap-2">
+                              {linkedSnag.reinspection_status === 'ready_for_inspection' && (
+                                <>
+                                  <button onClick={() => handleReinspect(linkedSnag.id, true)} className="px-2.5 py-1 bg-success text-success-foreground rounded-lg font-bold text-[10px]">
+                                    Approve & Close
+                                  </button>
+                                  <button onClick={() => handleReinspect(linkedSnag.id, false)} className="px-2.5 py-1 bg-danger text-danger-foreground rounded-lg font-bold text-[10px]">
+                                    Reject Fix
+                                  </button>
+                                </>
+                              )}
+                              {linkedSnag.status !== 'closed' && (
+                                <button onClick={() => handleOpenContractorRepair(linkedSnag.id)} className="px-2.5 py-1 bg-primary text-primary-foreground rounded-lg font-bold text-[10px]">
+                                  Contractor Upload Fix
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           )}
