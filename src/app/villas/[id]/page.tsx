@@ -769,17 +769,21 @@ export default function ProjectDetailsPage() {
               {/* Room Filter Tabs (Requirement 1 & 3) */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-border/60">
                 {['All', 'Kitchen', 'Bedroom', 'Bathroom', 'Entrance', 'Hall', 'Balcony', 'Electrical DB'].map(rName => {
-                  const countInRoom = roomCheckpoints.filter(c => {
+                  const matchCp = (c: RoomCheckpoint) => {
                     if (rName === 'All') return true;
-                    const cpRoom = (c.audit_item.split(':')[0] || c.category_name || '').toLowerCase();
-                    return cpRoom.includes(rName.toLowerCase()) || c.category_name.toLowerCase().includes(rName.toLowerCase());
-                  }).length;
+                    const fLower = rName.toLowerCase();
+                    const catLower = (c.category_name || '').toLowerCase();
+                    const itemLower = (c.audit_item || '').toLowerCase();
+                    if (itemLower.includes(fLower) || catLower.includes(fLower)) return true;
+                    if (fLower === 'entrance' && (catLower.includes('door') || itemLower.includes('door') || itemLower.includes('threshold') || itemLower.includes('intercom'))) return true;
+                    if (fLower === 'kitchen' && (catLower.includes('kitchen') || itemLower.includes('cabinet') || itemLower.includes('sink') || itemLower.includes('mixer') || itemLower.includes('countertop'))) return true;
+                    if (fLower === 'bedroom' && (catLower.includes('furniture') || catLower.includes('paint') || itemLower.includes('wardrobe') || itemLower.includes('bed') || itemLower.includes('paint'))) return true;
+                    if (fLower === 'bathroom' && (catLower.includes('plumbing') || catLower.includes('bathroom') || itemLower.includes('basin') || itemLower.includes('toilet') || itemLower.includes('shower') || itemLower.includes('waterproofing') || itemLower.includes('mirror'))) return true;
+                    return false;
+                  };
 
-                  const completedInRoom = roomCheckpoints.filter(c => {
-                    const cpRoom = (c.audit_item.split(':')[0] || c.category_name || '').toLowerCase();
-                    const match = rName === 'All' ? true : (cpRoom.includes(rName.toLowerCase()) || c.category_name.toLowerCase().includes(rName.toLowerCase()));
-                    return match && (c.status === 'pass' || c.status === 'fail' || c.status === 'na');
-                  }).length;
+                  const countInRoom = roomCheckpoints.filter(matchCp).length;
+                  const completedInRoom = roomCheckpoints.filter(c => matchCp(c) && (c.status === 'pass' || c.status === 'fail' || c.status === 'na')).length;
 
                   return (
                     <button
@@ -807,8 +811,15 @@ export default function ProjectDetailsPage() {
                 {roomCheckpoints
                   .filter(c => {
                     if (selectedRoomFilter === 'All') return true;
-                    const cpRoom = (c.audit_item.split(':')[0] || c.category_name || '').toLowerCase();
-                    return cpRoom.includes(selectedRoomFilter.toLowerCase()) || c.category_name.toLowerCase().includes(selectedRoomFilter.toLowerCase());
+                    const fLower = selectedRoomFilter.toLowerCase();
+                    const catLower = (c.category_name || '').toLowerCase();
+                    const itemLower = (c.audit_item || '').toLowerCase();
+                    if (itemLower.includes(fLower) || catLower.includes(fLower)) return true;
+                    if (fLower === 'entrance' && (catLower.includes('door') || itemLower.includes('door') || itemLower.includes('threshold') || itemLower.includes('intercom'))) return true;
+                    if (fLower === 'kitchen' && (catLower.includes('kitchen') || itemLower.includes('cabinet') || itemLower.includes('sink') || itemLower.includes('mixer') || itemLower.includes('countertop'))) return true;
+                    if (fLower === 'bedroom' && (catLower.includes('furniture') || catLower.includes('paint') || itemLower.includes('wardrobe') || itemLower.includes('bed') || itemLower.includes('paint'))) return true;
+                    if (fLower === 'bathroom' && (catLower.includes('plumbing') || catLower.includes('bathroom') || itemLower.includes('basin') || itemLower.includes('toilet') || itemLower.includes('shower') || itemLower.includes('waterproofing') || itemLower.includes('mirror'))) return true;
+                    return false;
                   })
                   .map((cp) => {
                     const linkedSnag = items.find(i => i.checkpoint_id === cp.id || i.id === cp.snag_id);

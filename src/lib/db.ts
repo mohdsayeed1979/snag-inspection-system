@@ -302,22 +302,24 @@ const inMemoryStore = new Map<string, any>();
 
 // Helper to parse LocalStorage safely with in-memory caching
 const safeParseList = <T = any>(key: string): T[] => {
+  if (typeof window !== 'undefined') {
+    try {
+      const val = localStorage.getItem(key);
+      if (val && val !== 'null' && val !== 'undefined') {
+        const parsed = JSON.parse(val);
+        const arr = Array.isArray(parsed) ? parsed : [];
+        inMemoryStore.set(key, arr);
+        return arr;
+      }
+    } catch (e) {
+      console.error(`Failed to parse storage key: ${key}`, e);
+    }
+  }
   if (inMemoryStore.has(key)) {
     const memData = inMemoryStore.get(key);
     return Array.isArray(memData) ? memData : [];
   }
-  if (typeof window === 'undefined') return [];
-  try {
-    const val = localStorage.getItem(key);
-    if (!val || val === 'null' || val === 'undefined') return [];
-    const parsed = JSON.parse(val);
-    const arr = Array.isArray(parsed) ? parsed : [];
-    inMemoryStore.set(key, arr);
-    return arr;
-  } catch (e) {
-    console.error(`Failed to parse storage key: ${key}`, e);
-    return [];
-  }
+  return [];
 };
 
 // Quota-Safe storage writer that guards against LocalStorage 5MB quota errors
@@ -2052,33 +2054,123 @@ export const dbService = {
     const newCheckpoints: RoomCheckpoint[] = [];
     let counter = 1;
 
+    const DEFAULT_ROOM_CHECKPOINTS: Record<string, { category: string; item: string }[]> = {
+      entrance: [
+        { category: 'Doors', item: 'Main Door Alignment' },
+        { category: 'Doors', item: 'Door Frame' },
+        { category: 'Doors', item: 'Door Lock' },
+        { category: 'Doors', item: 'Door Hinges' },
+        { category: 'Architectural', item: 'Threshold' },
+        { category: 'Paint', item: 'Paint Finish' },
+        { category: 'Architectural', item: 'Silicone Finish' },
+        { category: 'Lighting', item: 'Entrance Ceiling Light' },
+        { category: 'Cleaning', item: 'Cleaning' }
+      ],
+      kitchen: [
+        { category: 'Kitchen', item: 'Cabinet Cleaning' },
+        { category: 'Kitchen', item: 'Cabinet Scratches' },
+        { category: 'Kitchen', item: 'Drawer Alignment' },
+        { category: 'Kitchen', item: 'Door Alignment' },
+        { category: 'Kitchen', item: 'Hinges' },
+        { category: 'Kitchen', item: 'Missing Accessories' },
+        { category: 'Kitchen', item: 'Panel Warping' },
+        { category: 'Kitchen', item: 'Countertop Finish' },
+        { category: 'Plumbing', item: 'Sink' },
+        { category: 'Plumbing', item: 'Mixer' },
+        { category: 'Plumbing', item: 'Drain' },
+        { category: 'Tiles', item: 'Tiles' },
+        { category: 'Architectural', item: 'Silicone' },
+        { category: 'Lighting', item: 'Lighting' },
+        { category: 'Cleaning', item: 'Cleaning' }
+      ],
+      bedroom: [
+        { category: 'Paint', item: 'Paint Finish' },
+        { category: 'Paint', item: 'Wall Paint' },
+        { category: 'Paint', item: 'Ceiling Paint' },
+        { category: 'Tiles', item: 'Floor Tiles' },
+        { category: 'Furniture', item: 'Wardrobe' },
+        { category: 'Windows', item: 'Window' },
+        { category: 'Doors', item: 'Door' },
+        { category: 'Doors', item: 'Door Lock' },
+        { category: 'Electrical', item: 'Switches' },
+        { category: 'Electrical', item: 'Sockets' },
+        { category: 'Lighting', item: 'Lighting' },
+        { category: 'Cleaning', item: 'Cleaning' }
+      ],
+      bathroom: [
+        { category: 'Plumbing', item: 'Wash Basin' },
+        { category: 'Architectural', item: 'Mirror' },
+        { category: 'Plumbing', item: 'Drain' },
+        { category: 'Civil', item: 'Waterproofing' },
+        { category: 'Bathroom Accessories', item: 'Accessories' },
+        { category: 'Lighting', item: 'Lighting' },
+        { category: 'Cleaning', item: 'Cleaning' }
+      ],
+      hall: [
+        { category: 'Paint', item: 'Wall Paint Finish & Color Uniformity' },
+        { category: 'Paint', item: 'Ceiling Paint Smoothness' },
+        { category: 'Windows', item: 'Window Frame Fixation & Glass' },
+        { category: 'Electrical', item: 'Power Sockets & Switches' },
+        { category: 'Tiles', item: 'Skirting Tiles Alignment' },
+        { category: 'Cleaning', item: 'Cleaning' }
+      ],
+      balcony: [
+        { category: 'Doors', item: 'Sliding Door Rollers & Weather Seal' },
+        { category: 'Civil', item: 'Railing Height & Anchor Bolts' },
+        { category: 'Civil', item: 'Floor Waterproofing & Water Slope' },
+        { category: 'Cleaning', item: 'Cleaning' }
+      ],
+      'electrical db': [
+        { category: 'Electrical', item: 'Distribution Board Wire Dressing & Earth Continuity' },
+        { category: 'Electrical', item: 'Circuit Breakers Labeling' }
+      ]
+    };
+
     allRoomNodes.forEach((roomNode) => {
       const roomLower = roomNode.name.toLowerCase();
+      const collectedItems: { category: string; item: string; templateId?: string }[] = [];
 
       activeTemplates.forEach((tpl) => {
         const tplCps = tpl.checkpoints || [];
-        // Match template checkpoints by room name
         const matchingCps = tplCps.filter(c => 
           c.room_name.toLowerCase() === roomLower ||
           roomLower.includes(c.room_name.toLowerCase()) ||
           c.room_name.toLowerCase().includes(roomLower)
         );
 
-        const listToUse = matchingCps.length > 0 ? matchingCps : tplCps.slice(0, 3);
-
-        listToUse.forEach((cp) => {
-          counter++;
-          newCheckpoints.push({
-            id: `cp-gen-${projectId}-${roomNode.id}-${counter}`,
-            project_id: projectId,
-            node_id: roomNode.id,
-            template_id: tpl.id,
-            category_name: cp.category_name || tpl.title,
-            audit_item: `${roomNode.name}: ${cp.audit_item}`,
-            status: counter % 7 === 0 ? 'fail' : counter % 3 === 0 ? 'pass' : 'pending',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+        matchingCps.forEach(cp => {
+          collectedItems.push({
+            category: cp.category_name || tpl.title,
+            item: cp.audit_item,
+            templateId: tpl.id
           });
+        });
+      });
+
+      // Fallback to DEFAULT_ROOM_CHECKPOINTS if template matching produced no items
+      if (collectedItems.length === 0) {
+        const key = Object.keys(DEFAULT_ROOM_CHECKPOINTS).find(k => roomLower.includes(k) || k.includes(roomLower));
+        const defaultList = key ? DEFAULT_ROOM_CHECKPOINTS[key] : DEFAULT_ROOM_CHECKPOINTS['entrance'];
+        defaultList.forEach(def => {
+          collectedItems.push({
+            category: def.category,
+            item: def.item
+          });
+        });
+      }
+
+      collectedItems.forEach((cp) => {
+        counter++;
+        newCheckpoints.push({
+          id: `cp-gen-${projectId}-${roomNode.id}-${counter}`,
+          project_id: projectId,
+          node_id: roomNode.id,
+          template_id: cp.templateId || activeTemplates[0]?.id || 'tpl-1bhk-core',
+          category_name: cp.category,
+          audit_item: cp.item,
+          status: counter % 7 === 0 ? 'fail' : counter % 3 === 0 ? 'pass' : 'pending',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         });
       });
     });
