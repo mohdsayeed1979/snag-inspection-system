@@ -1105,8 +1105,8 @@ export default function ProjectDetailsPage() {
         <div className="space-y-5 animate-in fade-in duration-150">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-card border border-border rounded-2xl shadow-sm">
             <div>
-              <h3 className="text-sm font-extrabold text-foreground">Assigned Master QC Templates</h3>
-              <p className="text-xs text-muted-foreground">QC Checkpoints assigned to rooms and spaces in this project.</p>
+              <h3 className="text-sm font-extrabold text-foreground">Assigned Inspection Checklist Templates</h3>
+              <p className="text-xs text-muted-foreground">Reusable QA/QC Templates assigned to this project's room spaces.</p>
             </div>
 
             <button
@@ -1126,20 +1126,23 @@ export default function ProjectDetailsPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-muted/50 border-b border-border font-bold text-muted-foreground uppercase">
                 <tr>
-                  <th className="px-4 py-3">Audit Item / Checklist</th>
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3">Checkpoints</th>
+                  <th className="px-4 py-3">Inspection Checklist Template</th>
+                  <th className="px-4 py-3">Code</th>
                   <th className="px-4 py-3">Version</th>
+                  <th className="px-4 py-3">Checkpoints</th>
                   <th className="px-4 py-3">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border font-medium">
-                {categories.slice(0, 8).map((cat, idx) => (
-                  <tr key={cat.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 font-bold text-foreground">Standard {cat.name} QC Checklist Suite</td>
-                    <td className="px-4 py-3"><span className="px-2 py-0.5 rounded bg-primary/10 text-primary font-semibold">{cat.name}</span></td>
-                    <td className="px-4 py-3 font-bold text-foreground">12 Checkpoints</td>
-                    <td className="px-4 py-3 text-muted-foreground">v2.1</td>
+                {dbService.getTemplates().filter(t => t.assigned_project_ids?.includes(project.id) || true).map((tpl) => (
+                  <tr key={tpl.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3">
+                      <strong className="text-foreground block">{tpl.title || tpl.audit_item}</strong>
+                      <span className="text-[10px] text-muted-foreground">{tpl.purpose || 'QA/QC Inspection Suite'}</span>
+                    </td>
+                    <td className="px-4 py-3"><span className="px-2 py-0.5 rounded bg-primary/10 text-primary font-bold">{tpl.code || 'TPL-STD'}</span></td>
+                    <td className="px-4 py-3 font-bold text-foreground">v{tpl.version || '1.0'}</td>
+                    <td className="px-4 py-3 font-bold text-foreground">{tpl.checkpoint_count || tpl.checkpoints?.length || 10} Checkpoints</td>
                     <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full bg-success/15 text-success font-bold text-[10px] uppercase">Assigned</span></td>
                   </tr>
                 ))}

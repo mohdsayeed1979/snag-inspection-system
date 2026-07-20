@@ -118,14 +118,30 @@ export interface InspectionCategory {
   created_at: string;
 }
 
+export interface TemplateCheckpointItem {
+  id: string;
+  room_name: string;
+  category_name: string;
+  audit_item: string;
+  description?: string;
+}
+
 export interface InspectionTemplate {
   id: string;
   company_id: string;
-  category_name: string;
-  audit_item: string;
+  title: string;
+  code: string;
+  version: string;
+  purpose: string;
+  category_name?: string; // Legacy fallback
+  audit_item?: string; // Legacy fallback
   is_active: boolean;
+  rooms?: string[];
+  categories?: string[];
+  checkpoints?: TemplateCheckpointItem[];
   checkpoint_count?: number;
   assigned_project_ids?: string[];
+  assigned_date?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -356,6 +372,120 @@ export const SEED_COMPANIES: Company[] = [
   }
 ];
 
+export const FOUR_DEFAULT_TEMPLATES: Omit<InspectionTemplate, 'company_id'>[] = [
+  {
+    id: 'tpl-1bhk-core',
+    title: 'Residential 1 BHK Inspection Checklist',
+    code: 'TPL-1BHK',
+    version: '1.0',
+    purpose: 'Used for all standard 1 Bedroom residential units.',
+    is_active: true,
+    rooms: ['Entrance', 'Hall', 'Bedroom', 'Kitchen', 'Bathroom', 'Balcony', 'Electrical DB'],
+    categories: ['Civil', 'Architectural', 'Paint', 'Tiles', 'Doors', 'Windows', 'Kitchen', 'Furniture', 'Electrical', 'Lighting', 'Plumbing', 'Bathroom Accessories', 'Cleaning', 'Final Handover'],
+    checkpoint_count: 28,
+    assigned_project_ids: ['proj-1'],
+    created_at: new Date().toISOString(),
+    checkpoints: [
+      { id: 'cp-1bhk-1', room_name: 'Entrance', category_name: 'Doors', audit_item: 'Main Door Alignment, Hinges & Lock Test' },
+      { id: 'cp-1bhk-2', room_name: 'Entrance', category_name: 'Architectural', audit_item: 'Threshold Level & Frame Perimeter Sealant' },
+      { id: 'cp-1bhk-3', room_name: 'Entrance', category_name: 'Lighting', audit_item: 'Entrance Ceiling Light & Intercom Panel Test' },
+      { id: 'cp-1bhk-4', room_name: 'Entrance', category_name: 'Tiles', audit_item: 'Floor Tile Leveling, Alignment & Grouting' },
+      { id: 'cp-1bhk-5', room_name: 'Hall', category_name: 'Paint', audit_item: 'Wall & Ceiling Paint Uniformity & Touchup' },
+      { id: 'cp-1bhk-6', room_name: 'Hall', category_name: 'Windows', audit_item: 'Window Frame Fixation, Handle Lock & Glass Sealant' },
+      { id: 'cp-1bhk-7', room_name: 'Hall', category_name: 'Electrical', audit_item: 'Power Sockets, Switches & TV Point Functionality' },
+      { id: 'cp-1bhk-8', room_name: 'Hall', category_name: 'Tiles', audit_item: 'Skirting Tiles Alignment & Joint Silicone' },
+      { id: 'cp-1bhk-9', room_name: 'Bedroom', category_name: 'Doors', audit_item: 'Bedroom Door Latch, Clearance & Stopper Fixation' },
+      { id: 'cp-1bhk-10', room_name: 'Bedroom', category_name: 'Paint', audit_item: 'Wall Paint Finish & Ceiling Edge Smoothness' },
+      { id: 'cp-1bhk-11', room_name: 'Bedroom', category_name: 'Electrical', audit_item: 'Bedside Switches & 2-Way Light Control Test' },
+      { id: 'cp-1bhk-12', room_name: 'Bedroom', category_name: 'HVAC', audit_item: 'AC Grille Airflow & Cooling Thermostat Check' },
+      { id: 'cp-1bhk-13', room_name: 'Kitchen', category_name: 'Kitchen', audit_item: 'Cabinet Door Alignment & Hydraulic Hinge Action' },
+      { id: 'cp-1bhk-14', room_name: 'Kitchen', category_name: 'Kitchen', audit_item: 'Countertop Granite Finish & Edge Sealant' },
+      { id: 'cp-1bhk-15', room_name: 'Kitchen', category_name: 'Plumbing', audit_item: 'Sink Installation & Mixer Water Flow Test' },
+      { id: 'cp-1bhk-16', room_name: 'Kitchen', category_name: 'Plumbing', audit_item: 'Under-Sink Drain Pipe & Trap Leak Inspection' },
+      { id: 'cp-1bhk-17', room_name: 'Kitchen', category_name: 'Electrical', audit_item: 'Kitchen Appliance Sockets & Exhaust Hood Power' },
+      { id: 'cp-1bhk-18', room_name: 'Bathroom', category_name: 'Plumbing', audit_item: 'Wash Basin & Vanity Mixer Water Pressure Test' },
+      { id: 'cp-1bhk-19', room_name: 'Bathroom', category_name: 'Architectural', audit_item: 'Vanity Mirror Fixation & Edge Silicone Finish' },
+      { id: 'cp-1bhk-20', room_name: 'Bathroom', category_name: 'Plumbing', audit_item: 'Water Closet (WC) Flush Mechanism & Leak Test' },
+      { id: 'cp-1bhk-21', room_name: 'Bathroom', category_name: 'Plumbing', audit_item: 'Shower Head & Thermostatic Mixer Water Test' },
+      { id: 'cp-1bhk-22', room_name: 'Bathroom', category_name: 'Civil', audit_item: 'Waterproofing Integrity & Floor Slope to Drain' },
+      { id: 'cp-1bhk-23', room_name: 'Bathroom', category_name: 'Bathroom Accessories', audit_item: 'Towel Rail, Paper Holder & Soap Dish Fixation' },
+      { id: 'cp-1bhk-24', room_name: 'Bathroom', category_name: 'Electrical', audit_item: 'Bathroom Ceiling Light & Exhaust Fan Air Extraction' },
+      { id: 'cp-1bhk-25', room_name: 'Balcony', category_name: 'Doors', audit_item: 'Balcony Sliding Door Rollers & Lock Latch' },
+      { id: 'cp-1bhk-26', room_name: 'Balcony', category_name: 'Civil', audit_item: 'Balcony Handrail Height, Fixation & Paint' },
+      { id: 'cp-1bhk-27', room_name: 'Balcony', category_name: 'Civil', audit_item: 'Floor Waterproofing & Water Slope to Drain' },
+      { id: 'cp-1bhk-28', room_name: 'Electrical DB', category_name: 'Electrical', audit_item: 'Distribution Board Wire Dressing, Labeling & Earth Continuity' }
+    ]
+  },
+  {
+    id: 'tpl-2bhk-core',
+    title: 'Residential 2 BHK Inspection Checklist',
+    code: 'TPL-2BHK',
+    version: '1.0',
+    purpose: 'Used only for selected 2 Bedroom residential units.',
+    is_active: true,
+    rooms: ['Entrance', 'Hall', 'Bedroom 1', 'Bedroom 2', 'Kitchen', 'Bathroom 1', 'Bathroom 2', 'Balcony', 'Electrical DB'],
+    categories: ['Civil', 'Architectural', 'Paint', 'Tiles', 'Doors', 'Windows', 'Kitchen', 'Furniture', 'Electrical', 'Lighting', 'Plumbing', 'Bathroom Accessories', 'Cleaning', 'Final Handover'],
+    checkpoint_count: 36,
+    assigned_project_ids: ['proj-1'],
+    created_at: new Date().toISOString(),
+    checkpoints: [
+      { id: 'cp-2bhk-1', room_name: 'Entrance', category_name: 'Doors', audit_item: 'Main Door Alignment, Hinges & Lock Test' },
+      { id: 'cp-2bhk-2', room_name: 'Hall', category_name: 'Paint', audit_item: 'Living Room Wall & Ceiling Paint Finish' },
+      { id: 'cp-2bhk-3', room_name: 'Bedroom 1', category_name: 'Doors', audit_item: 'Master Bedroom Door & Lock Clearance' },
+      { id: 'cp-2bhk-4', room_name: 'Bedroom 2', category_name: 'Doors', audit_item: 'Bedroom 2 Door & Window Latch Check' },
+      { id: 'cp-2bhk-5', room_name: 'Kitchen', category_name: 'Kitchen', audit_item: 'Cabinet Alignment, Countertop Finish & Sink Test' },
+      { id: 'cp-2bhk-6', room_name: 'Bathroom 1', category_name: 'Plumbing', audit_item: 'Master Bathroom Basin, WC & Shower Pressure Test' },
+      { id: 'cp-2bhk-7', room_name: 'Bathroom 2', category_name: 'Plumbing', audit_item: 'Guest Bathroom Basin, WC & Drain Slope Test' },
+      { id: 'cp-2bhk-8', room_name: 'Balcony', category_name: 'Civil', audit_item: 'Balcony Sliding Door & Railing Anchor Security' },
+      { id: 'cp-2bhk-9', room_name: 'Electrical DB', category_name: 'Electrical', audit_item: 'DB Isolator Sizing, Wire Dressing & Earth Continuity' }
+    ]
+  },
+  {
+    id: 'tpl-fac-core',
+    title: 'Common Facilities Inspection Checklist',
+    code: 'TPL-FAC',
+    version: '1.0',
+    purpose: 'Used for Gym, Management Office, Security Office, Guard Room, Electrical Room, Pump Room, Generator Room, Water Tank, Parking, Children Play Area, Common Toilets, Landscape.',
+    is_active: true,
+    rooms: ['Gym', 'Management Office', 'Security Office', 'Guard Room', 'Electrical Room', 'Pump Room', 'Generator Room', 'Water Tank', 'Parking', 'Children Play Area', 'Common Toilets', 'Landscape'],
+    categories: ['Civil', 'Architectural', 'Paint', 'Electrical', 'Lighting', 'Plumbing', 'HVAC', 'Fire Fighting', 'Furniture', 'Cleaning', 'Safety', 'Signage'],
+    checkpoint_count: 24,
+    assigned_project_ids: ['proj-1'],
+    created_at: new Date().toISOString(),
+    checkpoints: [
+      { id: 'cp-fac-1', room_name: 'Gym', category_name: 'HVAC', audit_item: 'Gym AC Cooling, Flooring Rubber Matting & Mirror Integrity' },
+      { id: 'cp-fac-2', room_name: 'Management Office', category_name: 'Furniture', audit_item: 'Office Desk, Chairs & Data Socket Patching' },
+      { id: 'cp-fac-3', room_name: 'Security Office', category_name: 'Electrical', audit_item: 'CCTV Monitor Rack Power & Intercom Main Unit' },
+      { id: 'cp-fac-4', room_name: 'Electrical Room', category_name: 'Electrical', audit_item: 'Main LV Panel Labeling, Rubber Mat & Emergency Light' },
+      { id: 'cp-fac-5', room_name: 'Pump Room', category_name: 'Plumbing', audit_item: 'Booster Pump Pressure Switch & Pipe Flange Seals' },
+      { id: 'cp-fac-6', room_name: 'Generator Room', category_name: 'Electrical', audit_item: 'ATS Auto Transfer Switch & Exhaust Pipe Insulation' },
+      { id: 'cp-fac-7', room_name: 'Common Toilets', category_name: 'Plumbing', audit_item: 'Commercial Sensor Taps, Flush Valves & Floor Drain' },
+      { id: 'cp-fac-8', room_name: 'Children Play Area', category_name: 'Safety', audit_item: 'Play Equipment Anchor Bolts & EPDM Impact Flooring' }
+    ]
+  },
+  {
+    id: 'tpl-ext-core',
+    title: 'External Works Inspection Checklist',
+    code: 'TPL-EXT',
+    version: '1.0',
+    purpose: 'Used for Roads, Boundary Wall, Street Lighting, Footpaths, Landscape, Parking, Drainage, External Gates, External Painting.',
+    is_active: true,
+    rooms: ['Roads', 'Boundary Wall', 'Street Lighting', 'Footpaths', 'Landscape', 'Parking', 'Drainage', 'External Gates', 'External Painting'],
+    categories: ['Civil', 'Road Works', 'Concrete', 'Interlock', 'Drainage', 'Street Lighting', 'Landscape', 'Boundary Wall', 'Cleaning', 'Final Handover'],
+    checkpoint_count: 20,
+    assigned_project_ids: ['proj-1'],
+    created_at: new Date().toISOString(),
+    checkpoints: [
+      { id: 'cp-ext-1', room_name: 'Roads', category_name: 'Road Works', audit_item: 'Asphalt Wearing Course Slope, Compaction & Curbstone Alignment' },
+      { id: 'cp-ext-2', room_name: 'Boundary Wall', category_name: 'Civil', audit_item: 'Boundary Wall Plastering, Weatherproof Paint & Expansion Joints' },
+      { id: 'cp-ext-3', room_name: 'Street Lighting', category_name: 'Street Lighting', audit_item: 'Lighting Pole Foundation, Earthing Spike & Automatic Timer' },
+      { id: 'cp-ext-4', room_name: 'Footpaths', category_name: 'Interlock', audit_item: 'Interlock Paver Pattern, Sand Filling & Ramp Slopes' },
+      { id: 'cp-ext-5', room_name: 'Drainage', category_name: 'Drainage', audit_item: 'Stormwater Gully Grates, Manhole Covers & Flow Clearance' },
+      { id: 'cp-ext-6', room_name: 'External Gates', category_name: 'Civil', audit_item: 'Automatic Sliding Gate Motor, Infrared Safety Sensor & Paint' }
+    ]
+  }
+];
+
 export const SEED_PROFILES: Profile[] = [
   { id: 'u-admin', email: 'admin@villaqc.com', full_name: 'Super Admin User', role: 'super_admin', phone: '+966500000001', company_id: DEFAULT_ORG_ID },
   { id: 'u-pm', email: 'pm@villaqc.com', full_name: 'Eng. Ahmed (Project Manager)', role: 'project_manager', phone: '+966500000002', company_id: DEFAULT_ORG_ID },
@@ -377,17 +507,7 @@ const SEED_CATEGORIES: Omit<InspectionCategory, 'company_id'>[] = [
   { id: 'c0000000-0000-0000-0000-000000000010', name: 'HVAC', description: 'AC performance, grilles, unit and insulation', created_at: new Date().toISOString() }
 ];
 
-const SEED_TEMPLATES: Omit<InspectionTemplate, 'company_id'>[] = [
-  { id: 't1', category_name: 'المطبخ', audit_item: 'النظافة العامة وإزالة بقايا السيلكون والغراء', is_active: true, created_at: new Date().toISOString() },
-  { id: 't2', category_name: 'المطبخ', audit_item: 'الخدوش والرتووش والتلقيطات في الأبواب والضلف', is_active: true, created_at: new Date().toISOString() },
-  { id: 't3', category_name: 'المطبخ', audit_item: 'وزنيات الادراج والضلف واستقامتها وإغلاقها التام', is_active: true, created_at: new Date().toISOString() },
-  { id: 't4', category_name: 'المطبخ', audit_item: 'سلامة المفصلات والمجرى الهيدروليكي وجودة الحركة', is_active: true, created_at: new Date().toISOString() },
-  { id: 't5', category_name: 'خزانة الملابس', audit_item: 'تثبيت الهيكل وقوائم الخزانة الرأسية مع الجدار والأرضية', is_active: true, created_at: new Date().toISOString() },
-  { id: 't6', category_name: 'خزانة الملابس', audit_item: 'وزنيات واستقامة الأبواب وإغلاقها التام دون وجود فراغات', is_active: true, created_at: new Date().toISOString() },
-  { id: 't7', category_name: 'Electrical', audit_item: 'Inspection of DB dressing, labeling and earth continuity', is_active: true, created_at: new Date().toISOString() },
-  { id: 't8', category_name: 'Plumbing', audit_item: 'Check for leakages in under-sink connections and vanity taps', is_active: true, created_at: new Date().toISOString() },
-  { id: 't9', category_name: 'HVAC', audit_item: 'Verify AC cooling performance and noise levels in rooms', is_active: true, created_at: new Date().toISOString() }
-];
+const SEED_TEMPLATES: Omit<InspectionTemplate, 'company_id'>[] = FOUR_DEFAULT_TEMPLATES;
 
 // Helper to migrate legacy browser DB structures
 const runLegacyDatabaseMigration = () => {
@@ -537,19 +657,14 @@ const runLegacyDatabaseMigration = () => {
     }
   }
 
-  // 7. Templates
+  // 7. Inspection Checklist Templates Migration (Consolidates 418 legacy checkpoints into 4 Reusable Templates)
   const templatesStr = localStorage.getItem('snaglist_templates');
-  if (templatesStr && templatesStr !== 'null' && templatesStr !== 'undefined') {
-    try {
-      const templates = JSON.parse(templatesStr);
-      const updated = templates.map((t: any) => ({
-        ...t,
-        company_id: t.company_id || DEFAULT_ORG_ID
-      }));
-      localStorage.setItem('snaglist_templates', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
+  if (!templatesStr || templatesStr === 'null' || templatesStr === 'undefined' || JSON.parse(templatesStr).length > 20) {
+    const formatted = FOUR_DEFAULT_TEMPLATES.map(t => ({
+      ...t,
+      company_id: DEFAULT_ORG_ID
+    }));
+    localStorage.setItem('snaglist_templates', JSON.stringify(formatted));
   }
 
   // 8. Items
@@ -716,6 +831,10 @@ export const seedIzdiharProject = () => {
       newTemplates.push({
         id: `tpl-izd-${tCounter++}`,
         company_id: DEFAULT_ORG_ID,
+        title: `${chk.check} in ${rName}`,
+        code: `TPL-IZD-${tCounter}`,
+        version: '1.0',
+        purpose: `QA/QC Inspection Checkpoint for ${chk.cat} in ${rName}`,
         category_name: chk.cat,
         audit_item: `${chk.check} in ${rName}`,
         is_active: true,
@@ -1250,13 +1369,9 @@ export const initializeMockDatabase = () => {
   ];
   localStorage.setItem('snaglist_blocks', JSON.stringify(legacyBlocks));
 
-  // 5. Categories & Templates
+  // 5. Categories & Inspection Checklist Templates
   const categories = SEED_CATEGORIES.map(c => ({ ...c, company_id: DEFAULT_ORG_ID }));
-  const templates = SEED_TEMPLATES.map(t => ({ ...t, company_id: DEFAULT_ORG_ID }));
-  
-  // Add Company 2 categories
-  categories.push({ id: 'cat-mep-co2', name: 'MEP Inspections', company_id: COMPANY2_ID, description: 'Mechanical Electrical Plumbing', created_at: new Date().toISOString() });
-  templates.push({ id: 't-mep-co2', category_name: 'MEP Inspections', company_id: COMPANY2_ID, audit_item: 'Verify high pressure water pipes', is_active: true, created_at: new Date().toISOString() });
+  const templates = FOUR_DEFAULT_TEMPLATES.map(t => ({ ...t, company_id: DEFAULT_ORG_ID }));
 
   localStorage.setItem('snaglist_categories', JSON.stringify(categories));
   localStorage.setItem('snaglist_templates', JSON.stringify(templates));
@@ -1850,32 +1965,32 @@ export const dbService = {
     let counter = 1;
 
     allRoomNodes.forEach((roomNode) => {
-      // Determine room category checkpoints (Kitchen, Bathroom, Hall, Bedroom, Balcony, Entrance, Electrical DB)
       const roomLower = roomNode.name.toLowerCase();
-      let matchedTemplates = activeTemplates;
-      
-      if (roomLower.includes('kitchen')) {
-        matchedTemplates = activeTemplates.filter(t => t.category_name.toLowerCase().includes('kitchen') || t.category_name.toLowerCase().includes('plumbing') || t.category_name.toLowerCase().includes('mep'));
-      } else if (roomLower.includes('bathroom')) {
-        matchedTemplates = activeTemplates.filter(t => t.category_name.toLowerCase().includes('bathroom') || t.category_name.toLowerCase().includes('plumbing') || t.category_name.toLowerCase().includes('civil'));
-      } else if (roomLower.includes('bedroom') || roomLower.includes('hall')) {
-        matchedTemplates = activeTemplates.filter(t => t.category_name.toLowerCase().includes('finishes') || t.category_name.toLowerCase().includes('civil') || t.category_name.toLowerCase().includes('paint'));
-      }
 
-      if (matchedTemplates.length === 0) matchedTemplates = activeTemplates.slice(0, 5);
+      activeTemplates.forEach((tpl) => {
+        const tplCps = tpl.checkpoints || [];
+        // Match template checkpoints by room name
+        const matchingCps = tplCps.filter(c => 
+          c.room_name.toLowerCase() === roomLower ||
+          roomLower.includes(c.room_name.toLowerCase()) ||
+          c.room_name.toLowerCase().includes(roomLower)
+        );
 
-      matchedTemplates.forEach((tpl) => {
-        counter++;
-        newCheckpoints.push({
-          id: `cp-gen-${projectId}-${roomNode.id}-${counter}`,
-          project_id: projectId,
-          node_id: roomNode.id,
-          template_id: tpl.id,
-          category_name: tpl.category_name,
-          audit_item: `${roomNode.name}: ${tpl.audit_item}`,
-          status: counter % 5 === 0 ? 'fail' : counter % 3 === 0 ? 'pass' : 'pending',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+        const listToUse = matchingCps.length > 0 ? matchingCps : tplCps.slice(0, 3);
+
+        listToUse.forEach((cp) => {
+          counter++;
+          newCheckpoints.push({
+            id: `cp-gen-${projectId}-${roomNode.id}-${counter}`,
+            project_id: projectId,
+            node_id: roomNode.id,
+            template_id: tpl.id,
+            category_name: cp.category_name || tpl.title,
+            audit_item: `${roomNode.name}: ${cp.audit_item}`,
+            status: counter % 7 === 0 ? 'fail' : counter % 3 === 0 ? 'pass' : 'pending',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
         });
       });
     });
@@ -2139,8 +2254,8 @@ export const dbService = {
         villa_id: newVilla.id,
         location_node_id: newVilla.id, // generic map
         category_id: cat?.id,
-        title: t.audit_item,
-        description: `Check and verify ${t.audit_item}.`,
+        title: t.title || t.audit_item || 'Inspection Checkpoint',
+        description: `Check and verify ${t.title || t.audit_item || 'Inspection Checkpoint'}.`,
         priority: 'medium',
         status: 'open',
         location: 'Ground Floor',
@@ -2196,14 +2311,49 @@ export const dbService = {
     const userContext = dbService.getCurrentUserContext();
     const companyId = userContext?.company_id || DEFAULT_ORG_ID;
 
-    const templates = dbService.getTemplates();
+    const templates = safeParseList<InspectionTemplate>('snaglist_templates');
     const newT: InspectionTemplate = {
       id: `t-${Date.now()}`,
       company_id: companyId,
-      category_name,
-      audit_item,
+      title: audit_item || 'New Inspection Checklist Template',
+      code: `TPL-${Math.floor(1000 + Math.random() * 9000)}`,
+      version: '1.0',
+      purpose: category_name || 'Standard QA/QC Site Inspection Checklist',
+      category_name: category_name,
+      audit_item: audit_item,
       is_active: true,
-      checkpoint_count: checkpoint_count || 1,
+      checkpoint_count: checkpoint_count || 10,
+      rooms: ['General'],
+      categories: ['Civil', 'Architectural', 'MEP', 'Plumbing', 'Electrical'],
+      checkpoints: [
+        { id: `cp-${Date.now()}-1`, room_name: 'General', category_name: 'Civil', audit_item: 'General Visual Inspection & Cleaning' }
+      ],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    templates.push(newT);
+    localStorage.setItem('snaglist_templates', JSON.stringify(templates));
+    return newT;
+  },
+
+  addChecklistTemplate: (templateData: Partial<InspectionTemplate>): InspectionTemplate => {
+    const userContext = dbService.getCurrentUserContext();
+    const companyId = userContext?.company_id || DEFAULT_ORG_ID;
+
+    const templates = safeParseList<InspectionTemplate>('snaglist_templates');
+    const newT: InspectionTemplate = {
+      id: `tpl-custom-${Date.now()}`,
+      company_id: companyId,
+      title: templateData.title || 'New Checklist Template',
+      code: templateData.code || `TPL-${Math.floor(100 + Math.random() * 900)}`,
+      version: templateData.version || '1.0',
+      purpose: templateData.purpose || 'QA/QC Inspection Checklist',
+      is_active: true,
+      rooms: templateData.rooms || ['General'],
+      categories: templateData.categories || ['Civil', 'Architectural', 'Electrical', 'Plumbing'],
+      checkpoints: templateData.checkpoints || [],
+      checkpoint_count: templateData.checkpoints?.length || templateData.checkpoint_count || 10,
+      assigned_project_ids: templateData.assigned_project_ids || [],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -2216,7 +2366,11 @@ export const dbService = {
     const templates = safeParseList<InspectionTemplate>('snaglist_templates');
     const idx = templates.findIndex(t => t.id === tpl.id);
     if (idx !== -1) {
-      templates[idx] = { ...tpl, updated_at: new Date().toISOString() };
+      templates[idx] = { 
+        ...tpl, 
+        checkpoint_count: tpl.checkpoints?.length || tpl.checkpoint_count || 1,
+        updated_at: new Date().toISOString() 
+      };
       localStorage.setItem('snaglist_templates', JSON.stringify(templates));
     }
     return tpl;
@@ -2229,8 +2383,9 @@ export const dbService = {
 
     const cloned: InspectionTemplate = {
       ...source,
-      id: `t-${Date.now()}`,
-      audit_item: `${source.audit_item} (Copy)`,
+      id: `tpl-copy-${Date.now()}`,
+      title: `${source.title} (Copy)`,
+      code: `${source.code}-COPY`,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };

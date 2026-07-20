@@ -132,7 +132,7 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['super_admin', 'project_manager', 'site_engineer', 'qaqc_inspector', 'contractor', 'read_only'] },
     { name: 'Projects Explorer', href: '/villas', icon: Building2, roles: ['super_admin', 'project_manager', 'site_engineer', 'qaqc_inspector', 'contractor', 'read_only'] },
-    { name: 'Master Templates', href: '/templates', icon: FileCheck, roles: ['super_admin', 'project_manager', 'site_engineer', 'qaqc_inspector'] },
+    { name: 'Inspection Checklist Templates', href: '/templates', icon: FileCheck, roles: ['super_admin', 'project_manager', 'site_engineer', 'qaqc_inspector'] },
     { name: 'Training Center', href: '/training', icon: GraduationCap, roles: ['super_admin', 'project_manager', 'site_engineer', 'qaqc_inspector', 'contractor', 'read_only'] },
     { name: 'Admin Control', href: '/admin', icon: ShieldCheck, roles: ['super_admin', 'project_manager'] }
   ];

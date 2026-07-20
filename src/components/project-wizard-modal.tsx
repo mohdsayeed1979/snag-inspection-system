@@ -468,20 +468,20 @@ const ProjectWizardModalContent: React.FC<ProjectWizardModalProps> = ({ isOpen, 
             </div>
           )}
 
-          {/* STEP 4: ASSIGN TEMPLATES */}
+          {/* STEP 4: ASSIGN INSPECTION CHECKLIST TEMPLATES */}
           {currentStep === 4 && (
             <div className="space-y-4 animate-in fade-in duration-200">
               <div className="p-3 bg-primary/5 border border-primary/15 rounded-xl text-xs">
-                <span className="font-extrabold text-primary block">Step 4: Assign Master QC Templates</span>
-                <p className="text-muted-foreground mt-0.5">Select audit templates to assign to this project's room spaces.</p>
+                <span className="font-extrabold text-primary block">Step 4: Assign Inspection Checklist Templates</span>
+                <p className="text-muted-foreground mt-0.5">Select reusable QA/QC templates to assign to this project (e.g. 1 BHK, 2 BHK, Common Facilities, External Works).</p>
               </div>
 
               <div className="space-y-2 max-h-60 overflow-y-auto border border-border rounded-xl p-3">
                 {templates.map(tpl => {
                   const isSelected = selectedTemplateIds.includes(tpl.id);
                   return (
-                    <label key={tpl.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-lg cursor-pointer text-xs">
-                      <div className="flex items-center gap-3">
+                    <label key={tpl.id} className="flex items-center justify-between p-3 hover:bg-muted/50 border border-border/60 rounded-xl cursor-pointer text-xs">
+                      <div className="flex items-center gap-3 min-w-0">
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -489,15 +489,18 @@ const ProjectWizardModalContent: React.FC<ProjectWizardModalProps> = ({ isOpen, 
                             if (e.target.checked) setSelectedTemplateIds([...selectedTemplateIds, tpl.id]);
                             else setSelectedTemplateIds(selectedTemplateIds.filter(id => id !== tpl.id));
                           }}
-                          className="rounded text-primary focus:ring-primary"
+                          className="rounded text-primary focus:ring-primary shrink-0"
                         />
-                        <div>
-                          <p className="font-bold text-foreground">{tpl.audit_item}</p>
-                          <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-semibold">{tpl.category_name}</span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-extrabold text-foreground truncate">{tpl.title || tpl.audit_item}</p>
+                            <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-bold">{tpl.code || 'TPL-STD'} (v{tpl.version || '1.0'})</span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground truncate mt-0.5">{tpl.purpose || 'QA/QC Inspection Checklist Suite'}</p>
                         </div>
                       </div>
 
-                      <span className="text-[10px] text-muted-foreground font-bold">{tpl.checkpoint_count || 1} Checkpoints</span>
+                      <span className="text-[10px] text-muted-foreground font-bold shrink-0 ml-2">{tpl.checkpoint_count || tpl.checkpoints?.length || 1} Checkpoints</span>
                     </label>
                   );
                 })}
