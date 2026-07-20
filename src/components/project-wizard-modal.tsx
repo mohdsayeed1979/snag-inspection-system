@@ -23,17 +23,23 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
+import { ProjectWizardErrorBoundary } from '@/components/wizard-error-boundary';
+
 interface ProjectWizardModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const ProjectWizardModal: React.FC<ProjectWizardModalProps> = ({ isOpen, onClose }) => {
+const ProjectWizardModalContent: React.FC<ProjectWizardModalProps> = ({ isOpen, onClose }) => {
   const router = useRouter();
   const { currentCompany } = useAuth();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
+
+  // Loading State
+  const [isLoadingModal, setIsLoadingModal] = useState(true);
+  const [loadingStepText, setLoadingStepText] = useState('Loading Project Context...');
 
   // Step 1: Info
   const [name, setName] = useState('');
@@ -61,13 +67,59 @@ export const ProjectWizardModal: React.FC<ProjectWizardModalProps> = ({ isOpen, 
   const [checklistsGenerated, setChecklistsGenerated] = useState(false);
   const [itemsCreatedCount, setItemsCreatedCount] = useState(0);
 
+  // Load and validate data when modal opens
   useEffect(() => {
     if (isOpen) {
-      setTemplates(dbService.getTemplates());
+      console.log('[QA/QC Wizard] Opening Project Wizard...');
+      setIsLoadingModal(true);
+      
+      const initializeData = async () => {
+        try {
+          setLoadingStepText('Loading Project Context...');
+          console.log('[QA/QC Wizard] Loading Project Context...');
+          await new Promise(r => setTimeout(r, 120));
+
+          setLoadingStepText('Loading Templates...');
+          console.log('[QA/QC Wizard] Loading Templates...');
+          const loadedTpls = dbService.getTemplates();
+          setTemplates(loadedTpls || []);
+          await new Promise(r => setTimeout(r, 120));
+
+          setLoadingStepText('Loading Hierarchy & Location Standards...');
+          console.log('[QA/QC Wizard] Loading Hierarchy...');
+          await new Promise(r => setTimeout(r, 120));
+
+          setLoadingStepText('Loading User Permissions...');
+          console.log('[QA/QC Wizard] Loading User Permissions...');
+          await new Promise(r => setTimeout(r, 100));
+
+          console.log('[QA/QC Wizard] Wizard Ready.');
+          setIsLoadingModal(false);
+        } catch (err) {
+          console.error('[QA/QC Wizard Initialization Error]:', err);
+          setIsLoadingModal(false);
+        }
+      };
+
+      initializeData();
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  if (isLoadingModal) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="bg-card border border-border rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <div>
+            <h4 className="text-sm font-extrabold text-foreground">{loadingStepText}</h4>
+            <p className="text-xs text-muted-foreground mt-1">Initializing QA/QC Setup Suite...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Step 1 Save / Next
   const handleSaveStep1 = () => {
@@ -600,5 +652,13 @@ export const ProjectWizardModal: React.FC<ProjectWizardModalProps> = ({ isOpen, 
 
       </div>
     </div>
+  );
+};
+
+export const ProjectWizardModal: React.FC<ProjectWizardModalProps> = (props) => {
+  return (
+    <ProjectWizardErrorBoundary onReset={props.onClose}>
+      <ProjectWizardModalContent {...props} />
+    </ProjectWizardErrorBoundary>
   );
 };
