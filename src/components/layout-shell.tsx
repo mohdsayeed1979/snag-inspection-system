@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { dbService, Notification, InspectionItem, Company } from '@/lib/db';
 import { UserGuideModal } from '@/components/user-guide-modal';
+import { InteractiveTour } from '@/components/interactive-tour';
 import { 
   LayoutDashboard, 
   Building2, 
@@ -24,7 +25,10 @@ import {
   FileCheck,
   Search,
   Globe,
-  BookOpen
+  BookOpen,
+  GraduationCap,
+  HelpCircle,
+  Sparkles
 } from 'lucide-react';
 
 interface LayoutShellProps {
@@ -37,6 +41,7 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [showTourModal, setShowTourModal] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -128,6 +133,7 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['super_admin', 'project_manager', 'site_engineer', 'qaqc_inspector', 'contractor', 'read_only'] },
     { name: 'Projects Explorer', href: '/villas', icon: Building2, roles: ['super_admin', 'project_manager', 'site_engineer', 'qaqc_inspector', 'contractor', 'read_only'] },
     { name: 'Master Templates', href: '/templates', icon: FileCheck, roles: ['super_admin', 'project_manager', 'site_engineer', 'qaqc_inspector'] },
+    { name: 'Training Center', href: '/training', icon: GraduationCap, roles: ['super_admin', 'project_manager', 'site_engineer', 'qaqc_inspector', 'contractor', 'read_only'] },
     { name: 'Admin Control', href: '/admin', icon: ShieldCheck, roles: ['super_admin', 'project_manager'] }
   ];
 
@@ -416,6 +422,16 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
               )}
             </div>
 
+            {/* Replay Guided Tour Button */}
+            <button 
+              onClick={() => setShowTourModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-warning/20 bg-warning/10 text-warning text-xs font-bold hover:bg-warning/20 transition-all"
+              title="Replay Interactive Guided Tour"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span className="hidden sm:inline">Guided Tour</span>
+            </button>
+
             {/* User Guide Button */}
             <button 
               onClick={() => setShowGuideModal(true)}
@@ -447,6 +463,12 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
       <UserGuideModal 
         isOpen={showGuideModal}
         onClose={() => setShowGuideModal(false)}
+      />
+
+      {/* Interactive Guided Tour */}
+      <InteractiveTour 
+        forceOpen={showTourModal}
+        onClose={() => setShowTourModal(false)}
       />
     </div>
   );

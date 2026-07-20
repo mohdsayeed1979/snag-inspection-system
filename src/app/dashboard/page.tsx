@@ -339,10 +339,41 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* QA/QC Checkpoint Summary Row */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            {(() => {
+              const projectCheckpoints = dbService.getProjectCheckpoints(selectedProjectId);
+              const totalCp = projectCheckpoints.length;
+              const passedCp = projectCheckpoints.filter(c => c.status === 'pass').length;
+              const failedCp = projectCheckpoints.filter(c => c.status === 'fail').length;
+              const pendingCp = projectCheckpoints.filter(c => c.status === 'pending').length;
+              const passRate = totalCp > 0 ? Math.round((passedCp / totalCp) * 100) : 100;
+
+              return [
+                { title: 'Total Checkpoints', val: totalCp, sub: 'Generated room audit items', icon: FileCheck, color: 'bg-card text-foreground border border-border shadow-sm' },
+                { title: 'Passed Checkpoints', val: passedCp, sub: 'Quality approved', icon: CheckCircle2, color: 'border-l-4 border-success bg-card text-foreground shadow-sm' },
+                { title: 'Failed (Auto-Snags)', val: failedCp, sub: 'Triggered snag creation', icon: AlertCircle, color: 'border-l-4 border-danger bg-card text-foreground shadow-sm' },
+                { title: 'Pending Checkpoints', val: pendingCp, sub: 'Awaiting site inspection', icon: Clock, color: 'border-l-4 border-warning bg-card text-foreground shadow-sm' },
+                { title: 'Quality Pass Rate', val: `${passRate}%`, sub: 'Overall compliance', icon: CheckCircle2, color: 'border-l-4 border-primary bg-card text-foreground shadow-sm' }
+              ].map((c, i) => (
+                <div key={i} className={`p-4 rounded-2xl flex flex-col justify-between hover:scale-[1.02] hover:shadow-md transition-all duration-200 ${c.color}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-muted-foreground">{c.title}</span>
+                    <c.icon className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="mt-3">
+                    <p className="text-2xl font-black tracking-tight">{c.val}</p>
+                    <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">{c.sub}</p>
+                  </div>
+                </div>
+              ));
+            })()}
+          </div>
+
           {/* Summary Cards Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
             {[
-              { title: 'Total Items', val: totalSnags, sub: 'Raised checklist items', icon: FileCheck, color: 'bg-white text-dark border border-border shadow-sm' },
+              { title: 'Total Snags', val: totalSnags, sub: 'Auto-created from failures', icon: FileCheck, color: 'bg-white text-dark border border-border shadow-sm' },
               { title: 'Open Snags', val: openSnags, sub: 'Require attention', icon: AlertCircle, color: 'border-l-4 border-danger bg-card text-foreground shadow-sm' },
               { title: 'In Progress', val: inProgressSnags, sub: 'Contractor working', icon: Clock, color: 'border-l-4 border-warning bg-card text-foreground shadow-sm' },
               { title: 'Pending QA', val: pendingQA, sub: 'Awaiting inspector approval', icon: Clock, color: 'border-l-4 border-accent bg-card text-foreground shadow-sm' },

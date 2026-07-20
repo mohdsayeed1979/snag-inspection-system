@@ -15,7 +15,8 @@ import {
   InspectionComment,
   InspectionHistory,
   ProjectDocumentFolder,
-  ProjectDocument
+  ProjectDocument,
+  RoomCheckpoint
 } from '@/lib/db';
 import { ProjectExplorerTree } from '@/components/project-explorer-tree';
 import { useAuth } from '@/context/AuthContext';
@@ -129,6 +130,23 @@ export default function ProjectDetailsPage() {
   const [newDocUrl, setNewDocUrl] = useState('');
   const [newDocType, setNewDocType] = useState('pdf');
 
+  // Room Checkpoints QA/QC State
+  const [roomCheckpoints, setRoomCheckpoints] = useState<RoomCheckpoint[]>([]);
+  const [showFailModal, setShowFailModal] = useState(false);
+  const [failingCheckpoint, setFailingCheckpoint] = useState<RoomCheckpoint | null>(null);
+  const [failTitle, setFailTitle] = useState('');
+  const [failDesc, setFailDesc] = useState('');
+  const [failPriority, setFailPriority] = useState<'low' | 'medium' | 'high' | 'critical'>('high');
+  const [failContractor, setFailContractor] = useState('Saudi Construction Co.');
+  const [failDueDate, setFailDueDate] = useState('');
+  const [failPhotoUrl, setFailPhotoUrl] = useState('');
+
+  // Contractor Repair Modal State
+  const [showRepairModal, setShowRepairModal] = useState(false);
+  const [repairSnagId, setRepairSnagId] = useState<string | null>(null);
+  const [repairAfterPhotoUrl, setRepairAfterPhotoUrl] = useState('');
+  const [repairNotes, setRepairNotes] = useState('');
+
   // Dynamic Form responses state for active snag
   const [formResponses, setFormResponses] = useState<Record<string, any>>({});
 
@@ -184,6 +202,10 @@ export default function ProjectDetailsPage() {
       // Fetch active items
       const allItems = dbService.getInspectionItems();
       setItems(allItems);
+
+      if (initialNodeId) {
+        setRoomCheckpoints(dbService.getRoomCheckpoints(initialNodeId));
+      }
     } else {
       router.push('/villas');
     }
@@ -191,14 +213,82 @@ export default function ProjectDetailsPage() {
 
   useEffect(() => {
     loadData();
-    // Check initial search tab override
     const tabParam = searchParams.get('tab');
     if (tabParam === 'documents') {
       setActiveTab('documents');
     }
   }, [projectId, currentCompany]);
 
-  // Sync breadcrumbs based on currentNodeId selection
+  useEffect(() => {
+    if (currentNodeId) {
+      setRoomCheckpoints(dbService.getRoomCheckpoints(currentNodeId));
+    }
+  }, [currentNodeId]);
+
+  const handleMarkPass = (cpId: string) => {
+    dbService.markCheckpoint(cpId, 'pass', undefined, user || undefined);
+    if (currentNodeId) setRoomCheckpoints(dbService.getRoomCheckpoints(currentNodeId));
+    loadData();
+  };
+
+  const handleMarkNA = (cpId: string) => {
+    dbService.markCheckpoint(cpId, 'na', undefined, user || undefined);
+    if (currentNodeId) setRoomCheckpoints(dbService.getRoomCheckpoints(currentNodeId));
+    loadData();
+  };
+
+  const openFailModal = (cp: RoomCheckpoint) => {
+    setFailingCheckpoint(cp);
+    setFailTitle(`FAILED CHECKPOINT: ${cp.audit_item}`);
+    setFailDesc(`Defect found during QA/QC inspection: ${cp.audit_item}`);
+    setFailPriority('high');
+    setFailContractor('Saudi Construction Co.');
+    setFailDueDate(new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]);
+    setFailPhotoUrl('');
+    setShowFailModal(true);
+  };
+
+  const handleConfirmFail = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!failingCheckpoint) return;
+
+    dbService.markCheckpoint(failingCheckpoint.id, 'fail', {
+      title: failTitle,
+      description: failDesc,
+      priority: failPriority,
+      assigned_to: failContractor,
+      due_date: failDueDate,
+      before_photo_url: failPhotoUrl
+    }, user || undefined);
+
+    setShowFailModal(false);
+    setFailingCheckpoint(null);
+    if (currentNodeId) setRoomCheckpoints(dbService.getRoomCheckpoints(currentNodeId));
+    loadData();
+  };
+
+  const handleOpenContractorRepair = (snagId: string) => {
+    setRepairSnagId(snagId);
+    setRepairAfterPhotoUrl('');
+    setRepairNotes('');
+    setShowRepairModal(true);
+  };
+
+  const handleConfirmContractorRepair = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!repairSnagId) return;
+
+    dbService.submitContractorRepair(repairSnagId, repairAfterPhotoUrl, repairNotes);
+    setShowRepairModal(false);
+    setRepairSnagId(null);
+    loadData();
+  };
+
+  const handleReinspect = (snagId: string, approved: boolean) => {
+    dbService.reinspectSnag(snagId, approved, approved ? 'QA/QC Engineer Approved & Closed' : 'Rejected. Fix required.');
+    loadData();
+  };
+
   useEffect(() => {
     if (currentNodeId) {
       const crumbs: ProjectNode[] = [];
@@ -608,6 +698,97 @@ export default function ProjectDetailsPage() {
       {activeTab === 'checklist' ? (
         <div className="space-y-4">
           
+          {/* Room QA/QC Inspection Checkpoints Suite */}
+          {roomCheckpoints.length > 0 && (
+            <div className="bg-card border border-border p-4 rounded-2xl shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                    <ClipboardCheck className="w-4 h-4 text-primary" />
+                    Room QA/QC Checkpoints ({roomCheckpoints.filter(c => c.status === 'pass').length}/{roomCheckpoints.length} Passed)
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">Mark PASS, FAIL, or N/A. FAIL automatically creates a Snag Item.</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {roomCheckpoints.map((cp) => {
+                  const linkedSnag = items.find(i => i.checkpoint_id === cp.id || i.id === cp.snag_id);
+                  return (
+                    <div key={cp.id} className="p-3 bg-muted/20 border border-border rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded bg-primary/10 text-primary font-bold text-[10px] uppercase">
+                            {cp.category_name}
+                          </span>
+                          <span className="font-bold text-foreground">{cp.audit_item}</span>
+                        </div>
+                        {cp.inspected_by && (
+                          <span className="text-[10px] text-muted-foreground block mt-1">
+                            Inspected by: {cp.inspected_by} on {new Date(cp.inspected_at || '').toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleMarkPass(cp.id)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                            cp.status === 'pass' ? 'bg-success text-success-foreground shadow' : 'bg-card border border-border text-foreground hover:bg-success/20'
+                          }`}
+                        >
+                          PASS
+                        </button>
+
+                        <button
+                          onClick={() => openFailModal(cp)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                            cp.status === 'fail' ? 'bg-danger text-danger-foreground shadow' : 'bg-card border border-border text-foreground hover:bg-danger/20'
+                          }`}
+                        >
+                          FAIL
+                        </button>
+
+                        <button
+                          onClick={() => handleMarkNA(cp.id)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                            cp.status === 'na' ? 'bg-muted-foreground text-background shadow' : 'bg-card border border-border text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          N/A
+                        </button>
+                      </div>
+
+                      {/* Linked Snag Info & Contractor Reinspection Buttons */}
+                      {cp.status === 'fail' && linkedSnag && (
+                        <div className="w-full pt-2 border-t border-border flex items-center justify-between text-[11px]">
+                          <span className="text-danger font-bold">Auto-Created Snag: {linkedSnag.snag_number} ({linkedSnag.status.replace('_', ' ')})</span>
+                          <div className="flex gap-2">
+                            {linkedSnag.reinspection_status === 'ready_for_inspection' && (
+                              <>
+                                <button onClick={() => handleReinspect(linkedSnag.id, true)} className="px-2.5 py-1 bg-success text-success-foreground rounded-lg font-bold text-[10px]">
+                                  Approve & Close
+                                </button>
+                                <button onClick={() => handleReinspect(linkedSnag.id, false)} className="px-2.5 py-1 bg-danger text-danger-foreground rounded-lg font-bold text-[10px]">
+                                  Reject Fix
+                                </button>
+                              </>
+                            )}
+                            {linkedSnag.status !== 'closed' && (
+                              <button onClick={() => handleOpenContractorRepair(linkedSnag.id)} className="px-2.5 py-1 bg-primary text-primary-foreground rounded-lg font-bold text-[10px]">
+                                Contractor Upload Fix
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Action Row */}
           <div className="flex flex-col lg:flex-row gap-4 items-center justify-between bg-card border border-border p-4 rounded-2xl shadow-sm">
             {/* Search */}
@@ -1615,6 +1796,185 @@ export default function ProjectDetailsPage() {
               </div>
 
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------ */}
+      {/* LOG FAILED CHECKPOINT SNAG MODAL */}
+      {/* ------------------------------------------ */}
+      {showFailModal && failingCheckpoint && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowFailModal(false)} />
+          
+          <div className="relative bg-card border border-border rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-2 text-danger">
+              <AlertCircle className="w-5 h-5" />
+              <h3 className="text-base font-extrabold text-foreground">Checkpoint Failed — Log Auto Snag</h3>
+            </div>
+            
+            <p className="text-xs text-muted-foreground">
+              Checkpoint: <strong className="text-foreground">{failingCheckpoint.audit_item}</strong> ({failingCheckpoint.category_name})
+            </p>
+
+            <form onSubmit={handleConfirmFail} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Snag Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={failTitle}
+                  onChange={(e) => setFailTitle(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground font-semibold outline-none focus:ring-2 focus:ring-danger"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Defect Description</label>
+                <textarea
+                  rows={2}
+                  value={failDesc}
+                  onChange={(e) => setFailDesc(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground font-semibold outline-none focus:ring-2 focus:ring-danger"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Priority</label>
+                  <select
+                    value={failPriority}
+                    onChange={(e) => setFailPriority(e.target.value as any)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground font-semibold outline-none focus:ring-2 focus:ring-danger"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Due Date</label>
+                  <input
+                    type="date"
+                    value={failDueDate}
+                    onChange={(e) => setFailDueDate(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground font-semibold outline-none focus:ring-2 focus:ring-danger"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Assigned Contractor</label>
+                <input
+                  type="text"
+                  value={failContractor}
+                  onChange={(e) => setFailContractor(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground font-semibold outline-none focus:ring-2 focus:ring-danger"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Photo Before (Defect Evidence URL)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="https://images.unsplash.com/photo-..."
+                    value={failPhotoUrl}
+                    onChange={(e) => setFailPhotoUrl(e.target.value)}
+                    className="flex-1 bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground font-semibold outline-none focus:ring-2 focus:ring-danger"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFailPhotoUrl('https://images.unsplash.com/photo-1581094288338-2314dddb7ecc?auto=format&fit=crop&w=600&q=80')}
+                    className="px-3 py-2 bg-secondary text-primary font-bold text-[10px] rounded-xl border border-accent/15"
+                  >
+                    Demo Image
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowFailModal(false)}
+                  className="px-4 py-2 bg-muted text-muted-foreground font-semibold text-xs rounded-xl hover:bg-muted/80"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-danger text-danger-foreground font-bold text-xs rounded-xl shadow-md hover:bg-danger/90"
+                >
+                  Create Snag & Mark Failed
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------ */}
+      {/* CONTRACTOR UPLOAD REPAIR FIX MODAL */}
+      {/* ------------------------------------------ */}
+      {showRepairModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowRepairModal(false)} />
+          
+          <div className="relative bg-card border border-border rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
+            <h3 className="text-base font-extrabold text-foreground">Contractor Fix & After Photo Upload</h3>
+            <p className="text-xs text-muted-foreground">Upload After Photo evidence to request QA/QC reinspection.</p>
+
+            <form onSubmit={handleConfirmContractorRepair} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Photo After (Rectified Defect Image URL) *</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    placeholder="https://images.unsplash.com/photo-..."
+                    value={repairAfterPhotoUrl}
+                    onChange={(e) => setRepairAfterPhotoUrl(e.target.value)}
+                    className="flex-1 bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground font-semibold outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setRepairAfterPhotoUrl('https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=600&q=80')}
+                    className="px-3 py-2 bg-secondary text-primary font-bold text-[10px] rounded-xl border border-accent/15"
+                  >
+                    Demo Image
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Contractor Work Notes</label>
+                <textarea
+                  rows={2}
+                  placeholder="Described repair works executed..."
+                  value={repairNotes}
+                  onChange={(e) => setRepairNotes(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground font-semibold outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowRepairModal(false)}
+                  className="px-4 py-2 bg-muted text-muted-foreground font-semibold text-xs rounded-xl hover:bg-muted/80"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-md hover:bg-primary/90"
+                >
+                  Submit Fix for Reinspection
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

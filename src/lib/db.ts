@@ -130,6 +130,21 @@ export interface InspectionTemplate {
   updated_at?: string;
 }
 
+export interface RoomCheckpoint {
+  id: string;
+  project_id: string;
+  node_id: string; // Room / Area ID
+  template_id?: string;
+  category_name: string;
+  audit_item: string;
+  status: 'pending' | 'pass' | 'fail' | 'na';
+  inspected_by?: string;
+  inspected_at?: string;
+  snag_id?: string; // Link to auto-created Snag if status === 'fail'
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface InspectionItem {
   id: string;
   snag_number: string;
@@ -143,6 +158,10 @@ export interface InspectionItem {
   description?: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: 'open' | 'assigned' | 'in_progress' | 'rectified' | 'qa_verification' | 'closed';
+  checkpoint_id?: string;
+  reinspection_status?: 'pending_contractor' | 'ready_for_inspection' | 'approved' | 'rejected';
+  before_photo_url?: string;
+  after_photo_url?: string;
   assigned_to?: string;
   due_date?: string;
   completion_date?: string;
@@ -1790,43 +1809,151 @@ export const dbService = {
       ? templates.filter(t => templateIds.includes(t.id))
       : templates.filter(t => t.is_active);
 
-    const existingItems = safeParseList<InspectionItem>('snaglist_items').filter(i => {
-      const projNodeIds = allRoomNodes.map(n => n.id);
-      return i.villa_id !== projectId && (!i.location_node_id || !projNodeIds.includes(i.location_node_id));
-    });
-
-    const newItems: InspectionItem[] = [];
+    const existingCheckpoints = safeParseList<RoomCheckpoint>('snaglist_checkpoints').filter(c => c.project_id !== projectId);
+    const newCheckpoints: RoomCheckpoint[] = [];
     let counter = 1;
 
     allRoomNodes.forEach((roomNode) => {
-      const sliceStart = counter % Math.max(1, activeTemplates.length - 2);
-      const roomTemplates = activeTemplates.slice(sliceStart, sliceStart + 3);
+      // Determine room category checkpoints (Kitchen, Bathroom, Hall, Bedroom, Balcony, Entrance, Electrical DB)
+      const roomLower = roomNode.name.toLowerCase();
+      let matchedTemplates = activeTemplates;
+      
+      if (roomLower.includes('kitchen')) {
+        matchedTemplates = activeTemplates.filter(t => t.category_name.toLowerCase().includes('kitchen') || t.category_name.toLowerCase().includes('plumbing') || t.category_name.toLowerCase().includes('mep'));
+      } else if (roomLower.includes('bathroom')) {
+        matchedTemplates = activeTemplates.filter(t => t.category_name.toLowerCase().includes('bathroom') || t.category_name.toLowerCase().includes('plumbing') || t.category_name.toLowerCase().includes('civil'));
+      } else if (roomLower.includes('bedroom') || roomLower.includes('hall')) {
+        matchedTemplates = activeTemplates.filter(t => t.category_name.toLowerCase().includes('finishes') || t.category_name.toLowerCase().includes('civil') || t.category_name.toLowerCase().includes('paint'));
+      }
 
-      roomTemplates.forEach((tpl) => {
+      if (matchedTemplates.length === 0) matchedTemplates = activeTemplates.slice(0, 5);
+
+      matchedTemplates.forEach((tpl) => {
         counter++;
-        const itemId = `snag-gen-${projectId}-${counter}`;
-        newItems.push({
-          id: itemId,
-          snag_number: `QC-${proj.project_code || 'PROJ'}-${String(counter).padStart(4, '0')}`,
-          company_id: companyId,
-          villa_id: roomNode.parent_id || projectId,
-          location_node_id: roomNode.id,
-          title: tpl.audit_item,
-          description: `Verify ${tpl.audit_item} in ${roomNode.name}. Compliance check.`,
-          priority: (counter % 3 === 0 ? 'high' : counter % 5 === 0 ? 'critical' : 'medium') as any,
-          status: (counter % 4 === 0 ? 'closed' : counter % 2 === 0 ? 'in_progress' : 'open') as any,
-          location: roomNode.name,
-          room: roomNode.name,
-          remarks: 'System generated inspection checklist item.',
-          inspection_date: new Date().toISOString().split('T')[0],
+        newCheckpoints.push({
+          id: `cp-gen-${projectId}-${roomNode.id}-${counter}`,
+          project_id: projectId,
+          node_id: roomNode.id,
+          template_id: tpl.id,
+          category_name: tpl.category_name,
+          audit_item: `${roomNode.name}: ${tpl.audit_item}`,
+          status: counter % 5 === 0 ? 'fail' : counter % 3 === 0 ? 'pass' : 'pending',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         });
       });
     });
 
-    localStorage.setItem('snaglist_items', JSON.stringify([...existingItems, ...newItems]));
-    return { itemsCreated: newItems.length };
+    localStorage.setItem('snaglist_checkpoints', JSON.stringify([...existingCheckpoints, ...newCheckpoints]));
+    return { itemsCreated: newCheckpoints.length };
+  },
+
+  getRoomCheckpoints: (nodeId: string): RoomCheckpoint[] => {
+    const all = safeParseList<RoomCheckpoint>('snaglist_checkpoints');
+    return all.filter(c => c.node_id === nodeId);
+  },
+
+  getProjectCheckpoints: (projectId: string): RoomCheckpoint[] => {
+    const all = safeParseList<RoomCheckpoint>('snaglist_checkpoints');
+    return all.filter(c => c.project_id === projectId);
+  },
+
+  markCheckpoint: (checkpointId: string, status: 'pass' | 'fail' | 'na', snagDetails?: Partial<InspectionItem>, user?: Profile): { checkpoint: RoomCheckpoint; snag?: InspectionItem } => {
+    const checkpoints = safeParseList<RoomCheckpoint>('snaglist_checkpoints');
+    const idx = checkpoints.findIndex(c => c.id === checkpointId);
+    if (idx === -1) throw new Error('Checkpoint not found');
+
+    const cp = checkpoints[idx];
+    cp.status = status;
+    cp.inspected_by = user?.full_name || 'QA/QC Engineer';
+    cp.inspected_at = new Date().toISOString();
+    cp.updated_at = new Date().toISOString();
+
+    let autoSnag: InspectionItem | undefined = undefined;
+
+    if (status === 'fail') {
+      const items = safeParseList<InspectionItem>('snaglist_items');
+      const proj = dbService.getProjectById(cp.project_id);
+      const snagCount = items.length + 1;
+      const snagId = `snag-auto-${Date.now()}-${snagCount}`;
+
+      autoSnag = {
+        id: snagId,
+        snag_number: `SNAG-${proj?.project_code || 'PROJ'}-${String(snagCount).padStart(4, '0')}`,
+        villa_id: cp.node_id,
+        location_node_id: cp.node_id,
+        company_id: cp.project_id,
+        title: snagDetails?.title || `FAILED CHECKPOINT: ${cp.audit_item}`,
+        description: snagDetails?.description || `Checkpoints failed during QA/QC inspection: ${cp.audit_item}`,
+        priority: snagDetails?.priority || 'high',
+        status: 'open',
+        checkpoint_id: cp.id,
+        reinspection_status: 'pending_contractor',
+        assigned_to: snagDetails?.assigned_to || 'Saudi Construction Co.',
+        due_date: snagDetails?.due_date || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+        inspection_date: new Date().toISOString().split('T')[0],
+        before_photo_url: snagDetails?.before_photo_url || '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      cp.snag_id = snagId;
+      items.push(autoSnag);
+      localStorage.setItem('snaglist_items', JSON.stringify(items));
+    }
+
+    checkpoints[idx] = cp;
+    localStorage.setItem('snaglist_checkpoints', JSON.stringify(checkpoints));
+    return { checkpoint: cp, snag: autoSnag };
+  },
+
+  submitContractorRepair: (snagId: string, afterPhotoUrl: string, notes?: string): InspectionItem | null => {
+    const items = safeParseList<InspectionItem>('snaglist_items');
+    const idx = items.findIndex(i => i.id === snagId);
+    if (idx === -1) return null;
+
+    const item = items[idx];
+    item.after_photo_url = afterPhotoUrl;
+    item.reinspection_status = 'ready_for_inspection';
+    item.status = 'rectified';
+    item.remarks = notes || 'Contractor completed repairs. Ready for QA/QC reinspection.';
+    item.updated_at = new Date().toISOString();
+
+    items[idx] = item;
+    localStorage.setItem('snaglist_items', JSON.stringify(items));
+    return item;
+  },
+
+  reinspectSnag: (snagId: string, approved: boolean, notes?: string): InspectionItem | null => {
+    const items = safeParseList<InspectionItem>('snaglist_items');
+    const idx = items.findIndex(i => i.id === snagId);
+    if (idx === -1) return null;
+
+    const item = items[idx];
+    if (approved) {
+      item.status = 'closed';
+      item.reinspection_status = 'approved';
+      item.completion_date = new Date().toISOString().split('T')[0];
+
+      // Mark linked checkpoint pass
+      if (item.checkpoint_id) {
+        const checkpoints = safeParseList<RoomCheckpoint>('snaglist_checkpoints');
+        const cpIdx = checkpoints.findIndex(c => c.id === item.checkpoint_id);
+        if (cpIdx !== -1) {
+          checkpoints[cpIdx].status = 'pass';
+          localStorage.setItem('snaglist_checkpoints', JSON.stringify(checkpoints));
+        }
+      }
+    } else {
+      item.status = 'in_progress';
+      item.reinspection_status = 'rejected';
+      item.remarks = notes || 'Reinspection rejected. Defect requires further rectification.';
+    }
+
+    item.updated_at = new Date().toISOString();
+    items[idx] = item;
+    localStorage.setItem('snaglist_items', JSON.stringify(items));
+    return item;
   },
 
   // --- Project Nodes (Generic Structure Tree) ---

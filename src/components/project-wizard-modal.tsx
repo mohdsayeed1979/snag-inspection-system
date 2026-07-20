@@ -125,12 +125,13 @@ export const ProjectWizardModal: React.FC<ProjectWizardModalProps> = ({ isOpen, 
     setCurrentStep(5);
   };
 
-  // Step 5 Generate Checklists
+  // Step 5 Generate Checklists -> Move to Step 6 Ready Summary
   const handleGenerateChecklists = () => {
     if (!createdProjectId) return;
     const res = dbService.generateProjectChecklists(createdProjectId, selectedTemplateIds);
     setItemsCreatedCount(res.itemsCreated);
     setChecklistsGenerated(true);
+    setCurrentStep(6);
   };
 
   // Finish and Redirect to live inspection space
@@ -152,7 +153,7 @@ export const ProjectWizardModal: React.FC<ProjectWizardModalProps> = ({ isOpen, 
               <Wand2 className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-foreground">5-Minute Enterprise Project Setup Wizard</h3>
+              <h3 className="text-base font-extrabold text-foreground">6-Step Enterprise Project Setup Wizard</h3>
               <p className="text-xs text-muted-foreground">Automated end-to-end setup from project creation to 100% inspection readiness</p>
             </div>
           </div>
@@ -169,7 +170,8 @@ export const ProjectWizardModal: React.FC<ProjectWizardModalProps> = ({ isOpen, 
             { num: 2, label: 'Hierarchy' },
             { num: 3, label: 'Locations' },
             { num: 4, label: 'Templates' },
-            { num: 5, label: 'Checklists' }
+            { num: 5, label: 'Checklists' },
+            { num: 6, label: 'Ready' }
           ].map(s => (
             <div key={s.num} className={`flex items-center gap-1.5 px-3 py-1 rounded-xl transition-all ${
               currentStep === s.num ? 'bg-primary text-primary-foreground shadow-sm' :
@@ -386,22 +388,43 @@ export const ProjectWizardModal: React.FC<ProjectWizardModalProps> = ({ isOpen, 
                 <p className="text-muted-foreground mt-0.5">Automatically populate all room audit items for every room in every unit.</p>
               </div>
 
-              {!checklistsGenerated ? (
-                <button
-                  type="button"
-                  onClick={handleGenerateChecklists}
-                  className="w-full py-3 bg-primary text-primary-foreground font-extrabold text-xs rounded-xl shadow-md hover:bg-primary/90 flex items-center justify-center gap-2"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  Generate All Room Inspection Checkpoints (1-Click)
-                </button>
-              ) : (
-                <div className="p-5 bg-success/15 border border-success/30 rounded-2xl text-center space-y-2">
-                  <CheckCircle2 className="w-8 h-8 text-success mx-auto" />
-                  <h4 className="text-base font-extrabold text-foreground">Project 100% Ready for QA/QC Inspection!</h4>
-                  <p className="text-xs text-muted-foreground">Generated <strong>{itemsCreatedCount}</strong> inspection checkpoints across all project rooms.</p>
+              <button
+                type="button"
+                onClick={handleGenerateChecklists}
+                className="w-full py-3 bg-primary text-primary-foreground font-extrabold text-xs rounded-xl shadow-md hover:bg-primary/90 flex items-center justify-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                Generate All Room Inspection Checkpoints (1-Click)
+              </button>
+            </div>
+          )}
+
+          {/* STEP 6: INSPECTION READY SUMMARY */}
+          {currentStep === 6 && (
+            <div className="space-y-5 animate-in fade-in duration-200 text-center py-6">
+              <div className="w-16 h-16 bg-success/20 text-success rounded-full flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-10 h-10" />
+              </div>
+
+              <div>
+                <h3 className="text-xl font-black text-foreground">Project Successfully Configured!</h3>
+                <p className="text-xs text-muted-foreground mt-1">Full QA/QC hierarchy and room inspection suites generated.</p>
+              </div>
+
+              <div className="p-4 bg-muted/30 border border-border rounded-2xl max-w-md mx-auto space-y-2 text-xs text-foreground font-semibold">
+                <p className="text-success font-extrabold text-sm">Project Inspection Ready</p>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="p-2 bg-card border border-border rounded-xl">
+                    <span className="block text-[10px] text-muted-foreground uppercase font-bold">Villas Configured</span>
+                    <strong className="text-base font-black text-foreground">{villaCount} Villas</strong>
+                  </div>
+                  <div className="p-2 bg-card border border-border rounded-xl">
+                    <span className="block text-[10px] text-muted-foreground uppercase font-bold">Units Configured</span>
+                    <strong className="text-base font-black text-foreground">{villaCount * unitsPerVilla} Units</strong>
+                  </div>
                 </div>
-              )}
+                <p className="text-muted-foreground pt-1 text-[11px]">Inspection Checklists Generated across all rooms.</p>
+              </div>
             </div>
           )}
 
@@ -418,7 +441,7 @@ export const ProjectWizardModal: React.FC<ProjectWizardModalProps> = ({ isOpen, 
             Previous
           </button>
 
-          {currentStep < 5 ? (
+          {currentStep < 6 ? (
             <button
               type="button"
               onClick={() => {
@@ -426,6 +449,7 @@ export const ProjectWizardModal: React.FC<ProjectWizardModalProps> = ({ isOpen, 
                 else if (currentStep === 2) handleSaveStep2();
                 else if (currentStep === 3) setCurrentStep(4);
                 else if (currentStep === 4) handleSaveStep4();
+                else if (currentStep === 5) handleGenerateChecklists();
               }}
               className="px-5 py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl hover:bg-primary/90 flex items-center gap-1.5 shadow-md"
             >
