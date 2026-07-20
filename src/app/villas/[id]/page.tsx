@@ -183,16 +183,25 @@ export default function ProjectDetailsPage() {
       setCategories(dbService.getCategories());
       setProfiles(dbService.getProfiles());
       
-      const allNodes = dbService.getProjectNodesByProjectId(currentProj.id);
+      let allNodes = dbService.getProjectNodesByProjectId(currentProj.id);
+      
+      // Auto-heal: Ensure project structure exists
+      if (allNodes.length === 0) {
+        console.log(`[Project Auto-Heal] Generating 30 Villas & Checkpoints for project ${currentProj.name}...`);
+        dbService.generateProjectStructure(currentProj.id);
+        dbService.generateProjectChecklists(currentProj.id);
+        allNodes = dbService.getProjectNodesByProjectId(currentProj.id);
+      }
+      
       setNodes(allNodes);
       
-      // Default node navigation
-      if (initialNodeId) {
-        setCurrentNodeId(initialNodeId);
-      } else {
+      // Determine active node ID
+      let targetNodeId = initialNodeId || currentNodeId;
+      if (!targetNodeId) {
         const roots = allNodes.filter(n => n.parent_id === null);
-        if (roots.length > 0 && currentNodeId === null) {
-          setCurrentNodeId(roots[0].id);
+        if (roots.length > 0) {
+          targetNodeId = roots[0].id;
+          setCurrentNodeId(targetNodeId);
         }
       }
 
@@ -204,8 +213,12 @@ export default function ProjectDetailsPage() {
       const allItems = dbService.getInspectionItems();
       setItems(allItems);
 
-      if (initialNodeId) {
-        setRoomCheckpoints(dbService.getRoomCheckpoints(initialNodeId));
+      // Load Room Checkpoints for active node or fallback to project checkpoints
+      if (targetNodeId) {
+        const roomCps = dbService.getRoomCheckpoints(targetNodeId);
+        setRoomCheckpoints(roomCps.length > 0 ? roomCps : dbService.getProjectCheckpoints(currentProj.id));
+      } else {
+        setRoomCheckpoints(dbService.getProjectCheckpoints(currentProj.id));
       }
     } else {
       router.push('/villas');
@@ -753,7 +766,7 @@ export default function ProjectDetailsPage() {
                 </div>
               </div>
 
-              {/* Room Filter Tabs (Requirement 1 & 6) */}
+              {/* Room Filter Tabs (Requirement 1 & 3) */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-border/60">
                 {['All', 'Kitchen', 'Bedroom', 'Bathroom', 'Entrance', 'Hall', 'Balcony', 'Electrical DB'].map(rName => {
                   const countInRoom = roomCheckpoints.filter(c => {
@@ -767,8 +780,6 @@ export default function ProjectDetailsPage() {
                     const match = rName === 'All' ? true : (cpRoom.includes(rName.toLowerCase()) || c.category_name.toLowerCase().includes(rName.toLowerCase()));
                     return match && (c.status === 'pass' || c.status === 'fail' || c.status === 'na');
                   }).length;
-
-                  if (countInRoom === 0 && rName !== 'All') return null;
 
                   return (
                     <button
@@ -1253,7 +1264,7 @@ export default function ProjectDetailsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border font-medium">
-                {dbService.getTemplates().filter(t => t.assigned_project_ids?.includes(project.id) || true).map((tpl) => (
+                {dbService.getTemplates().filter(t => (t.assigned_project_ids && t.assigned_project_ids.includes(project.id)) || (!t.assigned_project_ids?.length && (t.target_project_types?.includes(project.project_type) || t.target_project_types?.includes('residential') || t.target_project_types?.includes('villa')))).map((tpl) => (
                   <tr key={tpl.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3">
                       <strong className="text-foreground block">{tpl.title || tpl.audit_item}</strong>

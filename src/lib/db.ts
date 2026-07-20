@@ -325,17 +325,26 @@ export const safeSetItem = (key: string, data: any): void => {
   inMemoryStore.set(key, data);
   if (typeof window === 'undefined') return;
   try {
-    // For large datasets (checkpoints, nodes, items), cap browser localStorage cache to lightweight slices to avoid 5MB quota limit
-    if (key === 'snaglist_checkpoints' || key === 'snaglist_nodes' || key === 'snaglist_items') {
-      const lightData = Array.isArray(data) && data.length > 500
-        ? data.slice(0, 300)
-        : data;
-      localStorage.setItem(key, JSON.stringify(lightData));
-    } else {
-      localStorage.setItem(key, JSON.stringify(data));
-    }
+    localStorage.setItem(key, JSON.stringify(data));
   } catch (err) {
-    console.warn(`[Storage Quota Guard] LocalStorage 5MB limit reached for '${key}'. Data safely retained in memory store without crashing.`, err);
+    console.warn(`[Storage Quota Guard] LocalStorage quota warning for '${key}'. Attempting optimized slice for checkpoints...`, err);
+    try {
+      if (key === 'snaglist_checkpoints' && Array.isArray(data)) {
+        // Strip non-essential fields for browser storage fallback if 5MB limit hit
+        const compactCheckpoints = data.map((c: any) => ({
+          id: c.id,
+          project_id: c.project_id,
+          node_id: c.node_id,
+          category_name: c.category_name,
+          audit_item: c.audit_item,
+          status: c.status,
+          snag_id: c.snag_id
+        }));
+        localStorage.setItem(key, JSON.stringify(compactCheckpoints));
+      }
+    } catch (e2) {
+      console.error(`[Storage Error] Could not save '${key}' to localStorage. Retained in memory store.`, e2);
+    }
   }
 };
 
@@ -872,7 +881,7 @@ export const seedIzdiharProject = () => {
   localStorage.setItem('snaglist_projects', JSON.stringify(projectsList));
 
   // 3. Keep ONLY the Four Default Inspection Checklist Templates
-  safeSetItem('snaglist_templates', FOUR_DEFAULT_TEMPLATES.map(t => ({ ...t, company_id: DEFAULT_ORG_ID })));
+  safeSetItem('snaglist_templates', FOUR_DEFAULT_TEMPLATES.map(t => ({ ...t, company_id: DEFAULT_ORG_ID, assigned_project_ids: [projectId] })));
 
   // 4. Generate project nodes tree (30 Villas -> Ground Floor / First Floor -> Units G1-G4, F1-F4 -> Rooms)
   const nodesList: ProjectNode[] = (safeParseList('snaglist_nodes') || []).filter((n: any) => n && n.project_id !== projectId);
@@ -2022,6 +2031,22 @@ export const dbService = {
     const activeTemplates = templateIds && templateIds.length > 0
       ? templates.filter(t => templateIds.includes(t.id))
       : templates.filter(t => t.is_active);
+
+    // Save assigned project IDs permanently on templates
+    let templatesChanged = false;
+    activeTemplates.forEach((at) => {
+      const idx = templates.findIndex(t => t.id === at.id);
+      if (idx !== -1) {
+        const assigned = templates[idx].assigned_project_ids || [];
+        if (!assigned.includes(projectId)) {
+          templates[idx].assigned_project_ids = [...assigned, projectId];
+          templatesChanged = true;
+        }
+      }
+    });
+    if (templatesChanged) {
+      safeSetItem('snaglist_templates', templates);
+    }
 
     const existingCheckpoints = safeParseList<RoomCheckpoint>('snaglist_checkpoints').filter(c => c.project_id !== projectId);
     const newCheckpoints: RoomCheckpoint[] = [];
