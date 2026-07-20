@@ -63,9 +63,13 @@ const ProjectWizardModalContent: React.FC<ProjectWizardModalProps> = ({ isOpen, 
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
 
-  // Step 5: Checklists Generation
+  // Step 5: Checklists Generation & Async Progress State
   const [checklistsGenerated, setChecklistsGenerated] = useState(false);
   const [itemsCreatedCount, setItemsCreatedCount] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [genProgress, setGenProgress] = useState(0);
+  const [genStage, setGenStage] = useState('');
+  const [genError, setGenError] = useState<string | null>(null);
 
   // Load and validate data when modal opens
   useEffect(() => {
@@ -177,12 +181,6 @@ const ProjectWizardModalContent: React.FC<ProjectWizardModalProps> = ({ isOpen, 
   const handleSaveStep4 = () => {
     setCurrentStep(5);
   };
-
-  // Generation Progress & Error State
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [genProgress, setGenProgress] = useState(0);
-  const [genStage, setGenStage] = useState('');
-  const [genError, setGenError] = useState<string | null>(null);
 
   // Step 5 Generate Checklists -> Async Stage Execution -> Step 6 Ready Summary
   const handleGenerateChecklists = async () => {
