@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { dbService, Notification, InspectionItem, Company } from '@/lib/db';
+import { UserGuideModal } from '@/components/user-guide-modal';
 import { 
   LayoutDashboard, 
   Building2, 
@@ -22,7 +23,8 @@ import {
   TrendingUp,
   FileCheck,
   Search,
-  Globe
+  Globe,
+  BookOpen
 } from 'lucide-react';
 
 interface LayoutShellProps {
@@ -34,6 +36,7 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -124,6 +127,7 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['super_admin', 'project_manager', 'site_engineer', 'qaqc_inspector', 'contractor', 'read_only'] },
     { name: 'Projects Explorer', href: '/villas', icon: Building2, roles: ['super_admin', 'project_manager', 'site_engineer', 'qaqc_inspector', 'contractor', 'read_only'] },
+    { name: 'Master Templates', href: '/templates', icon: FileCheck, roles: ['super_admin', 'project_manager', 'site_engineer', 'qaqc_inspector'] },
     { name: 'Admin Control', href: '/admin', icon: ShieldCheck, roles: ['super_admin', 'project_manager'] }
   ];
 
@@ -412,6 +416,16 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
               )}
             </div>
 
+            {/* User Guide Button */}
+            <button 
+              onClick={() => setShowGuideModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-primary/20 bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-all"
+              title="Open Step-by-Step User Guide"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span className="hidden sm:inline">User Guide</span>
+            </button>
+
             {/* Dark Mode Toggle */}
             <button 
               onClick={toggleTheme} 
@@ -428,6 +442,12 @@ export const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
           {children}
         </main>
       </div>
+
+      {/* User Guide Modal */}
+      <UserGuideModal 
+        isOpen={showGuideModal}
+        onClose={() => setShowGuideModal(false)}
+      />
     </div>
   );
 };

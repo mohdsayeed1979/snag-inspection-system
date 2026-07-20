@@ -1,4 +1,4 @@
-// Enterprise Projects Explorer with search, filtering, and custom hierarchy creator
+// Enterprise Projects Explorer with complete Project Lifecycle Management & Safeguarded Deletion
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -16,32 +16,53 @@ import {
   Calendar,
   Grid,
   MapPin,
-  Sparkles
+  Sparkles,
+  Edit3,
+  Copy,
+  Archive,
+  RotateCcw,
+  Trash2,
+  AlertTriangle,
+  ShieldCheck,
+  CheckCircle2,
+  FileText
 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ProjectsPage() {
-  const { user, currentCompany, canCreateSnag } = useAuth();
+  const { user, currentCompany } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [nodes, setNodes] = useState<ProjectNode[]>([]);
   
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   // Modal / Add Project form state
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+
+  // Form Fields
   const [newName, setNewName] = useState('');
   const [newCode, setNewCode] = useState('');
   const [newDesc, setNewDesc] = useState('');
-  const [newClient, setNewClient] = useState('');
   const [newOwner, setNewOwner] = useState('');
   const [newContractor, setNewContractor] = useState('');
   const [newConsultant, setNewConsultant] = useState('');
   const [newEngineer, setNewEngineer] = useState('');
+  const [newSubcontractors, setNewSubcontractors] = useState('');
+  const [newPM, setNewPM] = useState('');
+  const [newNotes, setNewNotes] = useState('');
   const [newProjectType, setNewProjectType] = useState<Project['project_type']>('villa');
   const [newLevels, setNewLevels] = useState<string>('Block, Villa');
   const [newLocation, setNewLocation] = useState('');
+  const [newStartDate, setNewStartDate] = useState('');
+  const [newEndDate, setNewEndDate] = useState('');
+  const [newLogoUrl, setNewLogoUrl] = useState('');
+  const [newStatus, setNewStatus] = useState<'active' | 'archived' | 'completed' | 'on_hold'>('active');
 
   const loadData = () => {
     setProjects(dbService.getProjects());
@@ -55,31 +76,14 @@ export default function ProjectsPage() {
   // Handle template level autofills based on project type selection
   useEffect(() => {
     switch (newProjectType) {
-      case 'hotel':
-        setNewLevels('Tower, Floor, Room');
-        break;
-      case 'apartment':
-        setNewLevels('Block, Floor, Apartment');
-        break;
-      case 'hospital':
-        setNewLevels('Building, Floor, Room');
-        break;
-      case 'mall':
-        setNewLevels('Block, Shop');
-        break;
-      case 'warehouse':
-        setNewLevels('Zone, Rack');
-        break;
-      case 'factory':
-        setNewLevels('Area, Machine');
-        break;
-      case 'road':
-        setNewLevels('Section, Chainage');
-        break;
-      case 'villa':
-      default:
-        setNewLevels('Block, Villa');
-        break;
+      case 'hotel': setNewLevels('Tower, Floor, Room'); break;
+      case 'apartment': setNewLevels('Block, Floor, Apartment'); break;
+      case 'hospital': setNewLevels('Building, Floor, Room'); break;
+      case 'mall': setNewLevels('Block, Shop'); break;
+      case 'warehouse': setNewLevels('Zone, Rack'); break;
+      case 'factory': setNewLevels('Area, Machine'); break;
+      case 'road': setNewLevels('Section, Chainage'); break;
+      case 'villa': default: setNewLevels('Block, Villa'); break;
     }
   }, [newProjectType]);
 
@@ -87,12 +91,7 @@ export default function ProjectsPage() {
     e.preventDefault();
     if (!newName || !newCode) return;
 
-    // Parse levels configuration
-    const levelsArr = newLevels
-      .split(',')
-      .map(lvl => lvl.trim())
-      .filter(lvl => lvl.length > 0);
-
+    const levelsArr = newLevels.split(',').map(l => l.trim()).filter(l => l.length > 0);
     const companyId = currentCompany?.id || 'c0000000-0000-0000-0000-000000000000';
 
     dbService.addProject({
@@ -100,128 +99,236 @@ export default function ProjectsPage() {
       name: newName,
       project_code: newCode,
       description: newDesc,
-      owner: newOwner || newClient || 'General',
-      contractor: newContractor || 'Saudi Construction Co.',
-      consultant: newConsultant || 'Khatib & Alami',
-      engineer: newEngineer || user?.full_name || 'Eng. Khalid',
+      owner: newOwner,
+      contractor: newContractor,
+      consultant: newConsultant,
+      engineer: newEngineer,
+      subcontractors: newSubcontractors,
+      project_manager: newPM,
+      notes: newNotes,
       project_type: newProjectType,
-      level_structure: levelsArr,
-      location: newLocation
+      level_structure: levelsArr.length > 0 ? levelsArr : ['Block', 'Villa'],
+      location: newLocation || 'Saudi Arabia',
+      start_date: newStartDate,
+      expected_completion: newEndDate,
+      project_logo: newLogoUrl,
+      status: newStatus
     });
 
-    // Reset Form
+    setShowAddModal(false);
+    resetForm();
+    loadData();
+  };
+
+  const openEditModal = (proj: Project) => {
+    setSelectedProject(proj);
+    setNewName(proj.name);
+    setNewCode(proj.project_code || '');
+    setNewDesc(proj.description || '');
+    setNewOwner(proj.owner || '');
+    setNewContractor(proj.contractor || '');
+    setNewConsultant(proj.consultant || '');
+    setNewEngineer(proj.engineer || '');
+    setNewSubcontractors(proj.subcontractors || '');
+    setNewPM(proj.project_manager || '');
+    setNewNotes(proj.notes || '');
+    setNewProjectType(proj.project_type);
+    setNewLevels((proj.level_structure || ['Block', 'Villa']).join(', '));
+    setNewLocation(proj.location || '');
+    setNewStartDate(proj.start_date || '');
+    setNewEndDate(proj.expected_completion || '');
+    setNewLogoUrl(proj.project_logo || '');
+    setNewStatus(proj.status || 'active');
+    setShowEditModal(true);
+  };
+
+  const handleEditProject = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProject || !newName || !newCode) return;
+
+    const levelsArr = newLevels.split(',').map(l => l.trim()).filter(l => l.length > 0);
+
+    dbService.updateProject({
+      ...selectedProject,
+      name: newName,
+      project_code: newCode,
+      description: newDesc,
+      owner: newOwner,
+      contractor: newContractor,
+      consultant: newConsultant,
+      engineer: newEngineer,
+      subcontractors: newSubcontractors,
+      project_manager: newPM,
+      notes: newNotes,
+      project_type: newProjectType,
+      level_structure: levelsArr.length > 0 ? levelsArr : ['Block', 'Villa'],
+      location: newLocation,
+      start_date: newStartDate,
+      expected_completion: newEndDate,
+      project_logo: newLogoUrl,
+      status: newStatus
+    });
+
+    setShowEditModal(false);
+    setSelectedProject(null);
+    resetForm();
+    loadData();
+  };
+
+  const handleDuplicate = (id: string) => {
+    dbService.duplicateProject(id);
+    loadData();
+  };
+
+  const handleToggleArchive = (proj: Project) => {
+    if (proj.status === 'archived') {
+      dbService.unarchiveProject(proj.id);
+    } else {
+      dbService.archiveProject(proj.id);
+    }
+    loadData();
+  };
+
+  const openDeleteModal = (proj: Project) => {
+    setSelectedProject(proj);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteProject = (forceDelete: boolean = false) => {
+    if (!selectedProject) return;
+    const res = dbService.deleteProjectSafely(selectedProject.id, forceDelete);
+    alert(res.message);
+    setShowDeleteModal(false);
+    setSelectedProject(null);
+    loadData();
+  };
+
+  const resetForm = () => {
     setNewName('');
     setNewCode('');
     setNewDesc('');
     setNewOwner('');
-    setNewClient('');
     setNewContractor('');
     setNewConsultant('');
     setNewEngineer('');
+    setNewSubcontractors('');
+    setNewPM('');
+    setNewNotes('');
     setNewLocation('');
-    setShowAddModal(false);
-    loadData(); // Reload list
+    setNewStartDate('');
+    setNewEndDate('');
+    setNewLogoUrl('');
+    setNewStatus('active');
   };
 
-  // Filter projects based on search and type
-  const filteredProjects = projects.filter((p) => {
-    const typeMatch = selectedType === 'all' || p.project_type === selectedType;
-    const query = searchQuery.toLowerCase();
-    const searchMatch = 
-      p.name.toLowerCase().includes(query) ||
-      (p.project_code && p.project_code.toLowerCase().includes(query)) ||
-      (p.description && p.description.toLowerCase().includes(query)) ||
-      (p.contractor && p.contractor.toLowerCase().includes(query));
-    return typeMatch && searchMatch;
+  // Filter projects
+  const filteredProjects = projects.filter(proj => {
+    const matchesQuery = proj.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (proj.project_code && proj.project_code.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (proj.contractor && proj.contractor.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesType = selectedType === 'all' || proj.project_type === selectedType;
+    const matchesStatus = statusFilter === 'all' || (proj.status || 'active') === statusFilter;
+    return matchesQuery && matchesType && matchesStatus;
   });
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-200">
-      {/* Header Block */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      
+      {/* 1. Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Projects Explorer</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Manage company projects, structures and quality checklists.
-          </p>
+          <div className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wider mb-1">
+            <Building2 className="w-4 h-4" />
+            Enterprise Project Explorer
+          </div>
+          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Project Inspection Hub</h1>
+          <p className="text-sm text-muted-foreground">Manage multi-tenant inspection projects, structural levels, and project lifecycle controls.</p>
         </div>
 
-        {/* Add Project Button (PM & Admins only) */}
-        {canCreateSnag() && (
-          <button 
-            onClick={() => setShowAddModal(true)} 
-            className="flex items-center gap-2 bg-primary hover:bg-primary/95 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all shadow-md shadow-primary/10 self-start sm:self-auto"
-          >
-            <Plus className="w-4.5 h-4.5" /> Register New Project
-          </button>
-        )}
+        <button 
+          onClick={() => { resetForm(); setShowAddModal(true); }}
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-md hover:bg-primary/90 transition-all self-start md:self-auto"
+        >
+          <Plus className="w-4 h-4" />
+          Create New Project
+        </button>
       </div>
 
-      {/* Search & Filter Controls */}
-      <div className="bg-card border border-border p-4 rounded-2xl shadow-sm flex flex-col md:flex-row gap-4 items-center">
-        {/* Search Input */}
+      {/* 2. Search & Filters Bar */}
+      <div className="p-4 bg-card border border-border rounded-2xl flex flex-col md:flex-row items-center gap-3 shadow-sm">
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="w-4 h-4 absolute left-3.5 top-3 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search projects by name, code, description, contractor..."
+            placeholder="Search by project name, project code, contractor..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-all"
+            className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
-        {/* Type Filter Tabs */}
-        <div className="flex gap-1.5 w-full md:w-auto shrink-0 overflow-x-auto pb-1 md:pb-0">
+        <div className="flex items-center gap-3 w-full md:w-auto">
           <select
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="bg-background border border-border px-3 py-2.5 rounded-xl text-xs text-muted-foreground outline-none focus:border-primary transition-all cursor-pointer font-semibold"
+            className="px-3 py-2 bg-background border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="all">All Project Types</option>
-            <option value="villa">Villa Compound</option>
+            <option value="villa">Residential Villa Compound</option>
             <option value="apartment">Apartment Building</option>
             <option value="hotel">Hotel</option>
             <option value="hospital">Hospital</option>
             <option value="mall">Shopping Mall</option>
             <option value="warehouse">Warehouse</option>
             <option value="factory">Factory</option>
-            <option value="road">Infrastructure / Road</option>
-            <option value="custom">Custom Hierarchy</option>
+            <option value="road">Road Project</option>
+          </select>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 bg-background border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="all">All Statuses</option>
+            <option value="active">Active Only</option>
+            <option value="archived">Archived Only</option>
+            <option value="completed">Completed Only</option>
           </select>
         </div>
       </div>
 
-      {/* Projects Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* 3. Projects Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filteredProjects.map((proj) => {
-          // Count location tree items for this project
-          const projNodes = nodes.filter(n => n.project_id === proj.id && n.parent_id !== null);
-          
           let progressColor = 'bg-muted';
-          if (proj.completion_rate > 0 && proj.completion_rate < 100) {
-            progressColor = 'bg-warning';
-          } else if (proj.completion_rate === 100) {
-            progressColor = 'bg-success';
-          }
+          if (proj.completion_rate > 0 && proj.completion_rate < 100) progressColor = 'bg-warning';
+          else if (proj.completion_rate === 100) progressColor = 'bg-success';
 
           return (
-            <div key={proj.id} className="bg-card border border-border p-5 rounded-2xl shadow-sm hover:shadow-md hover:scale-[1.01] transition-all flex flex-col justify-between h-[280px]">
+            <div key={proj.id} className="bg-card border border-border p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
                     <span className="text-[9px] font-black uppercase text-primary tracking-widest px-2 py-0.5 rounded bg-primary/10">
                       {proj.project_type}
                     </span>
-                    <h3 className="text-base font-extrabold text-foreground truncate mt-1.5 max-w-[200px]">{proj.name}</h3>
+                    <h3 className="text-base font-extrabold text-foreground truncate mt-1.5 max-w-[190px]">{proj.name}</h3>
                   </div>
-                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                    proj.completion_rate === 100 ? 'bg-success/15 text-success border border-success/20' : 
-                    proj.completion_rate > 0 ? 'bg-warning/15 text-warning border border-warning/20' : 
-                    'bg-muted-foreground/10 text-muted-foreground'
-                  }`}>
-                    {proj.completion_rate}%
-                  </span>
+
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                      proj.completion_rate === 100 ? 'bg-success/15 text-success border border-success/20' : 
+                      proj.completion_rate > 0 ? 'bg-warning/15 text-warning border border-warning/20' : 
+                      'bg-muted-foreground/10 text-muted-foreground'
+                    }`}>
+                      {proj.completion_rate}%
+                    </span>
+                    <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded ${
+                      proj.status === 'archived' ? 'bg-danger/15 text-danger' : 'bg-success/10 text-success'
+                    }`}>
+                      {proj.status || 'Active'}
+                    </span>
+                  </div>
                 </div>
 
                 <p className="text-xs text-muted-foreground line-clamp-2 h-8 leading-relaxed">
@@ -236,7 +343,7 @@ export default function ProjectsPage() {
                   />
                 </div>
 
-                {/* Metadata */}
+                {/* Metadata Grid */}
                 <div className="grid grid-cols-2 gap-2 pt-2 text-[10px] text-muted-foreground">
                   <div className="flex items-center gap-1.5 truncate">
                     <HardHat className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -252,18 +359,60 @@ export default function ProjectsPage() {
                   </div>
                   <div className="flex items-center gap-1.5 truncate">
                     <Grid className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span>Levels: <strong>{proj.level_structure.join(' ➔ ')}</strong></span>
+                    <span>Levels: <strong>{(proj.level_structure || ['Villa']).join(' ➔ ')}</strong></span>
                   </div>
                 </div>
               </div>
 
-              {/* Clickable check link */}
-              <Link 
-                href={`/villas/${proj.id}`}
-                className="mt-4 w-full py-2.5 bg-secondary/35 hover:bg-secondary text-primary font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors border border-accent/15"
-              >
-                Enter Project QA Space &rarr;
-              </Link>
+              {/* Action Controls & Enter Button */}
+              <div className="pt-4 border-t border-border mt-4 space-y-2">
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1">
+                    <button 
+                      onClick={() => openEditModal(proj)} 
+                      title="Edit Project Details"
+                      className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-all text-xs flex items-center gap-1 font-semibold"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-primary" />
+                      Edit
+                    </button>
+
+                    <button 
+                      onClick={() => handleDuplicate(proj.id)} 
+                      title="Duplicate Project Structure"
+                      className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-all text-xs flex items-center gap-1 font-semibold"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-foreground" />
+                      Copy
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button 
+                      onClick={() => handleToggleArchive(proj)} 
+                      title={proj.status === 'archived' ? 'Unarchive Project' : 'Archive Project'}
+                      className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-all"
+                    >
+                      {proj.status === 'archived' ? <RotateCcw className="w-3.5 h-3.5 text-success" /> : <Archive className="w-3.5 h-3.5 text-warning" />}
+                    </button>
+
+                    <button 
+                      onClick={() => openDeleteModal(proj)} 
+                      title="Delete Project"
+                      className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted text-danger transition-all"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                <Link 
+                  href={`/villas/${proj.id}`}
+                  className="w-full py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors shadow-sm hover:bg-primary/90"
+                >
+                  View Details & Inspection Tree &rarr;
+                </Link>
+              </div>
             </div>
           );
         })}
@@ -278,151 +427,233 @@ export default function ProjectsPage() {
       </div>
 
       {/* ------------------------------------------ */}
-      {/* REGISTER PROJECT DIALOG MODAL */}
+      {/* REGISTER / EDIT PROJECT MODAL */}
       {/* ------------------------------------------ */}
-      {showAddModal && (
+      {(showAddModal || showEditModal) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setShowAddModal(false); setShowEditModal(false); }} />
           
-          <div className="relative bg-card border border-border rounded-2xl p-6 w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200 overflow-y-auto max-h-[90vh]">
-            <h3 className="text-sm font-bold text-foreground mb-4">Register New Enterprise Project</h3>
+          <div className="relative bg-card border border-border rounded-3xl p-6 w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200 overflow-y-auto max-h-[90vh] space-y-4">
+            <h3 className="text-base font-extrabold text-foreground">
+              {showEditModal ? 'Edit Project Settings & Lifecycle' : 'Register New Enterprise Project'}
+            </h3>
             
-            <form onSubmit={handleAddProject} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {/* Project Name */}
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Project Name</label>
+            <form onSubmit={showEditModal ? handleEditProject : handleAddProject} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Project Name *</label>
                   <input
                     type="text"
-                    placeholder="e.g. Al-Faisaliah Hotel Remodeling"
+                    required
+                    placeholder="e.g. Izdihar Villa Project"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs outline-none focus:border-primary text-foreground"
-                    required
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-primary text-foreground"
                   />
                 </div>
 
-                {/* Project Code */}
                 <div>
-                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Project Code</label>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Project Code *</label>
                   <input
                     type="text"
-                    placeholder="e.g. PROJ-FHS"
+                    required
+                    placeholder="e.g. IZD-001"
                     value={newCode}
                     onChange={(e) => setNewCode(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs outline-none focus:border-primary text-foreground"
-                    required
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-primary text-foreground"
                   />
                 </div>
 
-                {/* Location */}
                 <div>
-                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Location (City, Country)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Riyadh, KSA"
-                    value={newLocation}
-                    onChange={(e) => setNewLocation(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs outline-none focus:border-primary text-foreground"
-                  />
-                </div>
-
-                {/* Project Type */}
-                <div>
-                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Project Type</label>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Project Type</label>
                   <select
                     value={newProjectType}
                     onChange={(e) => setNewProjectType(e.target.value as any)}
-                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs outline-none focus:border-primary text-foreground cursor-pointer"
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-primary text-foreground"
                   >
-                    <option value="villa">Villa Compound</option>
+                    <option value="villa">Residential Villa Compound</option>
                     <option value="apartment">Apartment Building</option>
                     <option value="hotel">Hotel</option>
                     <option value="hospital">Hospital</option>
                     <option value="mall">Shopping Mall</option>
                     <option value="warehouse">Warehouse</option>
                     <option value="factory">Factory</option>
-                    <option value="road">Infrastructure / Road</option>
-                    <option value="custom">Custom Structure</option>
+                    <option value="road">Road Project</option>
                   </select>
                 </div>
 
-                {/* Level Structure */}
                 <div>
-                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Structure Nodes (Comma Separated)</label>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Project Status</label>
+                  <select
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value as any)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-primary text-foreground"
+                  >
+                    <option value="active">Active</option>
+                    <option value="archived">Archived</option>
+                    <option value="completed">Completed</option>
+                    <option value="on_hold">On Hold</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Client / Owner</label>
                   <input
                     type="text"
-                    placeholder="e.g. Tower, Floor, Suite"
-                    value={newLevels}
-                    onChange={(e) => setNewLevels(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs outline-none focus:border-primary text-foreground"
-                    required
+                    placeholder="e.g. Default Organization"
+                    value={newOwner}
+                    onChange={(e) => setNewOwner(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-primary text-foreground"
                   />
                 </div>
 
-                {/* Contractor */}
                 <div>
-                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Main Contractor</label>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Consultant Firm</label>
                   <input
                     type="text"
-                    placeholder="Saudi Construction Co."
-                    value={newContractor}
-                    onChange={(e) => setNewContractor(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs outline-none focus:border-primary text-foreground"
-                  />
-                </div>
-
-                {/* Consultant */}
-                <div>
-                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Consultant</label>
-                  <input
-                    type="text"
-                    placeholder="Khatib & Alami"
+                    placeholder="e.g. Khatib & Alami"
                     value={newConsultant}
                     onChange={(e) => setNewConsultant(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs outline-none focus:border-primary text-foreground"
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-primary text-foreground"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Main Contractor</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Saudi Construction Co."
+                    value={newContractor}
+                    onChange={(e) => setNewContractor(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-primary text-foreground"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Project Manager</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Eng. Ahmed Al-Otaibi"
+                    value={newPM}
+                    onChange={(e) => setNewPM(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-primary text-foreground"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={newStartDate}
+                    onChange={(e) => setNewStartDate(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-primary text-foreground"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Expected Completion</label>
+                  <input
+                    type="date"
+                    value={newEndDate}
+                    onChange={(e) => setNewEndDate(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-primary text-foreground"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Level Structure Definition (Comma Separated)</label>
+                  <input
+                    type="text"
+                    value={newLevels}
+                    onChange={(e) => setNewLevels(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-primary text-foreground"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">Defines hierarchy depth (e.g. "Villa, Unit, Room" or "Tower, Floor, Suite").</p>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Description</label>
+                  <textarea
+                    rows={2}
+                    value={newDesc}
+                    onChange={(e) => setNewDesc(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-primary text-foreground"
+                  />
+                </div>
+
               </div>
 
-              {/* Description */}
-              <div>
-                <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1.5">Project Description</label>
-                <textarea
-                  placeholder="Summary of construction scope and audit deliverables..."
-                  value={newDesc}
-                  onChange={(e) => setNewDesc(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs outline-none focus:border-primary text-foreground h-20 resize-none"
-                />
-              </div>
-
-              <div className="bg-muted/30 p-3 rounded-xl border border-border flex items-start gap-2">
-                <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5 animate-pulse" />
-                <p className="text-[9px] text-muted-foreground leading-normal">
-                  Defining structural levels allows you to organize inspections hierarchically. For example, a Hotel project with levels: <strong>{newLevels}</strong> will generate location nodes matching this exact architecture.
-                </p>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 justify-end pt-2">
+              <div className="flex items-center justify-end gap-3 pt-3">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2.5 border border-border hover:bg-muted text-foreground text-xs rounded-xl transition-all"
+                  onClick={() => { setShowAddModal(false); setShowEditModal(false); }}
+                  className="px-4 py-2 bg-muted text-muted-foreground rounded-xl text-xs font-semibold hover:bg-muted/80 transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2.5 bg-primary hover:bg-primary/95 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-primary/10"
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-bold hover:bg-primary/90 transition-all"
                 >
-                  Create Project
+                  {showEditModal ? 'Save Project Changes' : 'Create Project'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* ------------------------------------------ */}
+      {/* DELETE PROJECT CONFIRMATION MODAL */}
+      {/* ------------------------------------------ */}
+      {showDeleteModal && selectedProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md" onClick={() => setShowDeleteModal(false)} />
+          
+          <div className="relative bg-card border border-border rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-danger">
+              <AlertTriangle className="w-6 h-6" />
+              <h3 className="text-base font-extrabold text-foreground">Confirm Delete / Archive Project</h3>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Are you sure you want to delete <strong className="text-foreground">{selectedProject.name}</strong> ({selectedProject.project_code})?
+            </p>
+
+            <div className="p-3 bg-muted/40 border border-border rounded-xl text-xs space-y-1">
+              <span className="font-bold text-foreground block">Safety Policy Safeguard:</span>
+              <p className="text-muted-foreground">Projects containing active inspection records will be safely <strong className="text-warning">Archived</strong> instead of permanently deleted to preserve audit trails.</p>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                onClick={() => confirmDeleteProject(false)}
+                className="w-full py-2.5 bg-warning text-warning-foreground font-bold text-xs rounded-xl shadow hover:bg-warning/90 transition-all"
+              >
+                Safe Delete (Archive if Records Exist)
+              </button>
+
+              {user?.role === 'super_admin' && (
+                <button
+                  onClick={() => confirmDeleteProject(true)}
+                  className="w-full py-2.5 bg-danger text-danger-foreground font-bold text-xs rounded-xl shadow hover:bg-danger/90 transition-all"
+                >
+                  Super Admin Force Permanent Delete
+                </button>
+              )}
+
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="w-full py-2 bg-muted text-muted-foreground font-semibold text-xs rounded-xl hover:bg-muted/80 transition-all mt-1"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

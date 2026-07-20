@@ -17,6 +17,7 @@ import {
   ProjectDocumentFolder,
   ProjectDocument
 } from '@/lib/db';
+import { ProjectExplorerTree } from '@/components/project-explorer-tree';
 import { useAuth } from '@/context/AuthContext';
 import { exportCenter, ExportOptions } from '@/lib/exportCenter';
 import { parseChecklistExcel, saveImportedItems } from '@/lib/importCenter';
@@ -525,7 +526,22 @@ export default function ProjectDetailsPage() {
         </div>
       </div>
 
-      {/* 2. Sub-Locations Node Selector Grid */}
+      {/* 2. Main Workspace Layout with Tree Sidebar */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        
+        {/* Left Column: Interactive Project Tree */}
+        <div className="lg:col-span-1">
+          <ProjectExplorerTree 
+            nodes={nodes}
+            selectedNodeId={currentNodeId}
+            onSelectNode={(id) => setCurrentNodeId(id)}
+          />
+        </div>
+
+        {/* Right Column: Inspection Workspace & Checklists */}
+        <div className="lg:col-span-3 space-y-6">
+
+          {/* Sub-Locations Node Selector Grid */}
       {childNodes.length > 0 && (
         <div className="space-y-2 animate-in slide-in-from-top-1 duration-150">
           <h3 className="text-[10px] uppercase font-black text-muted-foreground tracking-widest flex items-center gap-1.5">
@@ -844,6 +860,8 @@ export default function ProjectDetailsPage() {
           </div>
         </div>
       )}
+        </div>
+      </div>
 
       {/* ------------------------------------------ */}
       {/* EXPORT OPTIONS MODAL */}

@@ -53,8 +53,12 @@ export interface Project {
   contractor?: string;
   consultant?: string;
   engineer?: string;
+  subcontractors?: string;
+  project_manager?: string;
+  notes?: string;
   completion_rate: number;
   created_at: string;
+  updated_at?: string;
   
   // Custom structure extensions
   project_type: 'villa' | 'apartment' | 'hotel' | 'hospital' | 'mall' | 'warehouse' | 'factory' | 'road' | 'bridge' | 'airport' | 'retail' | 'restaurant' | 'custom';
@@ -65,6 +69,7 @@ export interface Project {
   start_date?: string;
   expected_completion?: string;
   project_logo?: string;
+  status?: 'active' | 'archived' | 'completed' | 'on_hold';
 }
 
 // Kept for backward compatibility
@@ -119,7 +124,10 @@ export interface InspectionTemplate {
   category_name: string;
   audit_item: string;
   is_active: boolean;
+  checkpoint_count?: number;
+  assigned_project_ids?: string[];
   created_at: string;
+  updated_at?: string;
 }
 
 export interface InspectionItem {
@@ -1532,13 +1540,118 @@ export const dbService = {
   },
 
   updateProject: (proj: Project): Project => {
-    const projects = safeParseList('snaglist_projects');
+    const projects = safeParseList<Project>('snaglist_projects');
     const index = projects.findIndex((p: Project) => p.id === proj.id);
     if (index !== -1) {
-      projects[index] = { ...proj };
+      projects[index] = { ...proj, updated_at: new Date().toISOString() };
       localStorage.setItem('snaglist_projects', JSON.stringify(projects));
     }
     return proj;
+  },
+
+  duplicateProject: (id: string, newName?: string, newCode?: string): Project | null => {
+    const projects = safeParseList<Project>('snaglist_projects');
+    const source = projects.find(p => p.id === id);
+    if (!source) return null;
+
+    const newId = `proj-${Date.now()}`;
+    const clonedProj: Project = {
+      ...source,
+      id: newId,
+      name: newName || `${source.name} (Copy)`,
+      project_code: newCode || `${source.project_code || 'PROJ'}-COPY`,
+      completion_rate: 0,
+      status: 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    projects.push(clonedProj);
+    localStorage.setItem('snaglist_projects', JSON.stringify(projects));
+
+    // Clone nodes tree
+    const allNodes = safeParseList<ProjectNode>('snaglist_nodes');
+    const sourceNodes = allNodes.filter(n => n.project_id === id);
+    const nodeMapping: Record<string, string> = {};
+
+    const clonedNodes = sourceNodes.map(node => {
+      const clonedNodeId = `node-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      nodeMapping[node.id] = clonedNodeId;
+      return {
+        ...node,
+        id: clonedNodeId,
+        project_id: newId,
+        completion_rate: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    });
+
+    // Re-link parent_ids for nested nodes
+    clonedNodes.forEach(node => {
+      if (node.parent_id && nodeMapping[node.parent_id]) {
+        node.parent_id = nodeMapping[node.parent_id];
+      }
+    });
+
+    localStorage.setItem('snaglist_nodes', JSON.stringify([...allNodes, ...clonedNodes]));
+    return clonedProj;
+  },
+
+  archiveProject: (id: string): Project | null => {
+    const projects = safeParseList<Project>('snaglist_projects');
+    const idx = projects.findIndex(p => p.id === id);
+    if (idx !== -1) {
+      projects[idx].status = 'archived';
+      projects[idx].updated_at = new Date().toISOString();
+      localStorage.setItem('snaglist_projects', JSON.stringify(projects));
+      return projects[idx];
+    }
+    return null;
+  },
+
+  unarchiveProject: (id: string): Project | null => {
+    const projects = safeParseList<Project>('snaglist_projects');
+    const idx = projects.findIndex(p => p.id === id);
+    if (idx !== -1) {
+      projects[idx].status = 'active';
+      projects[idx].updated_at = new Date().toISOString();
+      localStorage.setItem('snaglist_projects', JSON.stringify(projects));
+      return projects[idx];
+    }
+    return null;
+  },
+
+  deleteProjectSafely: (id: string, forceDelete: boolean = false): { success: boolean; archived: boolean; message: string } => {
+    const projects = safeParseList<Project>('snaglist_projects');
+    const items = safeParseList<InspectionItem>('snaglist_items');
+    const nodes = safeParseList<ProjectNode>('snaglist_nodes');
+    const projNodeIds = nodes.filter(n => n.project_id === id).map(n => n.id);
+
+    const hasItems = items.some(i => i.villa_id === id || (i.location_node_id && projNodeIds.includes(i.location_node_id)));
+
+    if (hasItems && !forceDelete) {
+      // Archive instead of delete
+      dbService.archiveProject(id);
+      return {
+        success: true,
+        archived: true,
+        message: 'Project contains inspection records. It has been safely archived.'
+      };
+    }
+
+    // Permanent delete
+    const filteredProjects = projects.filter(p => p.id !== id);
+    localStorage.setItem('snaglist_projects', JSON.stringify(filteredProjects));
+
+    // Remove nodes
+    const filteredNodes = nodes.filter(n => n.project_id !== id);
+    localStorage.setItem('snaglist_nodes', JSON.stringify(filteredNodes));
+
+    return {
+      success: true,
+      archived: false,
+      message: 'Project deleted permanently.'
+    };
   },
 
   // --- Project Nodes (Generic Structure Tree) ---
@@ -1718,7 +1831,7 @@ export const dbService = {
     return list;
   },
 
-  addTemplate: (category_name: string, audit_item: string): InspectionTemplate => {
+  addTemplate: (category_name: string, audit_item: string, checkpoint_count?: number): InspectionTemplate => {
     const userContext = dbService.getCurrentUserContext();
     const companyId = userContext?.company_id || DEFAULT_ORG_ID;
 
@@ -1729,15 +1842,66 @@ export const dbService = {
       category_name,
       audit_item,
       is_active: true,
-      created_at: new Date().toISOString()
+      checkpoint_count: checkpoint_count || 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
     templates.push(newT);
     localStorage.setItem('snaglist_templates', JSON.stringify(templates));
     return newT;
   },
 
+  updateTemplate: (tpl: InspectionTemplate): InspectionTemplate => {
+    const templates = safeParseList<InspectionTemplate>('snaglist_templates');
+    const idx = templates.findIndex(t => t.id === tpl.id);
+    if (idx !== -1) {
+      templates[idx] = { ...tpl, updated_at: new Date().toISOString() };
+      localStorage.setItem('snaglist_templates', JSON.stringify(templates));
+    }
+    return tpl;
+  },
+
+  duplicateTemplate: (id: string): InspectionTemplate | null => {
+    const templates = safeParseList<InspectionTemplate>('snaglist_templates');
+    const source = templates.find(t => t.id === id);
+    if (!source) return null;
+
+    const cloned: InspectionTemplate = {
+      ...source,
+      id: `t-${Date.now()}`,
+      audit_item: `${source.audit_item} (Copy)`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    templates.push(cloned);
+    localStorage.setItem('snaglist_templates', JSON.stringify(templates));
+    return cloned;
+  },
+
+  toggleTemplateStatus: (id: string): InspectionTemplate | null => {
+    const templates = safeParseList<InspectionTemplate>('snaglist_templates');
+    const idx = templates.findIndex(t => t.id === id);
+    if (idx !== -1) {
+      templates[idx].is_active = !templates[idx].is_active;
+      templates[idx].updated_at = new Date().toISOString();
+      localStorage.setItem('snaglist_templates', JSON.stringify(templates));
+      return templates[idx];
+    }
+    return null;
+  },
+
+  assignTemplateToProject: (templateId: string, projectIds: string[]) => {
+    const templates = safeParseList<InspectionTemplate>('snaglist_templates');
+    const idx = templates.findIndex(t => t.id === templateId);
+    if (idx !== -1) {
+      templates[idx].assigned_project_ids = projectIds;
+      templates[idx].updated_at = new Date().toISOString();
+      localStorage.setItem('snaglist_templates', JSON.stringify(templates));
+    }
+  },
+
   deleteTemplate: (id: string) => {
-    const templates = safeParseList('snaglist_templates');
+    const templates = safeParseList<InspectionTemplate>('snaglist_templates');
     const filtered = templates.filter((t: any) => t.id !== id);
     localStorage.setItem('snaglist_templates', JSON.stringify(filtered));
   },
