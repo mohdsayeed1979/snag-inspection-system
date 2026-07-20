@@ -477,7 +477,10 @@ const ProjectWizardModalContent: React.FC<ProjectWizardModalProps> = ({ isOpen, 
               </div>
 
               <div className="space-y-2 max-h-60 overflow-y-auto border border-border rounded-xl p-3">
-                {templates.map(tpl => {
+                {templates.filter(tpl => {
+                  if (!tpl.target_project_types || tpl.target_project_types.length === 0) return true;
+                  return tpl.target_project_types.includes(projectType) || tpl.target_project_types.includes('residential') || tpl.target_project_types.includes('villa');
+                }).map(tpl => {
                   const isSelected = selectedTemplateIds.includes(tpl.id);
                   return (
                     <label key={tpl.id} className="flex items-center justify-between p-3 hover:bg-muted/50 border border-border/60 rounded-xl cursor-pointer text-xs">

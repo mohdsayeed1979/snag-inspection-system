@@ -133,6 +133,7 @@ export interface InspectionTemplate {
   code: string;
   version: string;
   purpose: string;
+  target_project_types?: string[]; // e.g. ['residential', 'villa', 'compound']
   category_name?: string; // Legacy fallback
   audit_item?: string; // Legacy fallback
   is_active: boolean;
@@ -379,41 +380,71 @@ export const FOUR_DEFAULT_TEMPLATES: Omit<InspectionTemplate, 'company_id'>[] = 
     code: 'TPL-1BHK',
     version: '1.0',
     purpose: 'Used for all standard 1 Bedroom residential units.',
+    target_project_types: ['residential', 'villa', 'compound'],
     is_active: true,
     rooms: ['Entrance', 'Hall', 'Bedroom', 'Kitchen', 'Bathroom', 'Balcony', 'Electrical DB'],
     categories: ['Civil', 'Architectural', 'Paint', 'Tiles', 'Doors', 'Windows', 'Kitchen', 'Furniture', 'Electrical', 'Lighting', 'Plumbing', 'Bathroom Accessories', 'Cleaning', 'Final Handover'],
-    checkpoint_count: 28,
+    checkpoint_count: 36,
     assigned_project_ids: ['proj-1'],
     created_at: new Date().toISOString(),
     checkpoints: [
+      // Entrance
       { id: 'cp-1bhk-1', room_name: 'Entrance', category_name: 'Doors', audit_item: 'Main Door Alignment, Hinges & Lock Test' },
       { id: 'cp-1bhk-2', room_name: 'Entrance', category_name: 'Architectural', audit_item: 'Threshold Level & Frame Perimeter Sealant' },
       { id: 'cp-1bhk-3', room_name: 'Entrance', category_name: 'Lighting', audit_item: 'Entrance Ceiling Light & Intercom Panel Test' },
       { id: 'cp-1bhk-4', room_name: 'Entrance', category_name: 'Tiles', audit_item: 'Floor Tile Leveling, Alignment & Grouting' },
-      { id: 'cp-1bhk-5', room_name: 'Hall', category_name: 'Paint', audit_item: 'Wall & Ceiling Paint Uniformity & Touchup' },
-      { id: 'cp-1bhk-6', room_name: 'Hall', category_name: 'Windows', audit_item: 'Window Frame Fixation, Handle Lock & Glass Sealant' },
-      { id: 'cp-1bhk-7', room_name: 'Hall', category_name: 'Electrical', audit_item: 'Power Sockets, Switches & TV Point Functionality' },
-      { id: 'cp-1bhk-8', room_name: 'Hall', category_name: 'Tiles', audit_item: 'Skirting Tiles Alignment & Joint Silicone' },
-      { id: 'cp-1bhk-9', room_name: 'Bedroom', category_name: 'Doors', audit_item: 'Bedroom Door Latch, Clearance & Stopper Fixation' },
-      { id: 'cp-1bhk-10', room_name: 'Bedroom', category_name: 'Paint', audit_item: 'Wall Paint Finish & Ceiling Edge Smoothness' },
-      { id: 'cp-1bhk-11', room_name: 'Bedroom', category_name: 'Electrical', audit_item: 'Bedside Switches & 2-Way Light Control Test' },
-      { id: 'cp-1bhk-12', room_name: 'Bedroom', category_name: 'HVAC', audit_item: 'AC Grille Airflow & Cooling Thermostat Check' },
-      { id: 'cp-1bhk-13', room_name: 'Kitchen', category_name: 'Kitchen', audit_item: 'Cabinet Door Alignment & Hydraulic Hinge Action' },
-      { id: 'cp-1bhk-14', room_name: 'Kitchen', category_name: 'Kitchen', audit_item: 'Countertop Granite Finish & Edge Sealant' },
-      { id: 'cp-1bhk-15', room_name: 'Kitchen', category_name: 'Plumbing', audit_item: 'Sink Installation & Mixer Water Flow Test' },
-      { id: 'cp-1bhk-16', room_name: 'Kitchen', category_name: 'Plumbing', audit_item: 'Under-Sink Drain Pipe & Trap Leak Inspection' },
-      { id: 'cp-1bhk-17', room_name: 'Kitchen', category_name: 'Electrical', audit_item: 'Kitchen Appliance Sockets & Exhaust Hood Power' },
-      { id: 'cp-1bhk-18', room_name: 'Bathroom', category_name: 'Plumbing', audit_item: 'Wash Basin & Vanity Mixer Water Pressure Test' },
-      { id: 'cp-1bhk-19', room_name: 'Bathroom', category_name: 'Architectural', audit_item: 'Vanity Mirror Fixation & Edge Silicone Finish' },
-      { id: 'cp-1bhk-20', room_name: 'Bathroom', category_name: 'Plumbing', audit_item: 'Water Closet (WC) Flush Mechanism & Leak Test' },
-      { id: 'cp-1bhk-21', room_name: 'Bathroom', category_name: 'Plumbing', audit_item: 'Shower Head & Thermostatic Mixer Water Test' },
-      { id: 'cp-1bhk-22', room_name: 'Bathroom', category_name: 'Civil', audit_item: 'Waterproofing Integrity & Floor Slope to Drain' },
-      { id: 'cp-1bhk-23', room_name: 'Bathroom', category_name: 'Bathroom Accessories', audit_item: 'Towel Rail, Paper Holder & Soap Dish Fixation' },
-      { id: 'cp-1bhk-24', room_name: 'Bathroom', category_name: 'Electrical', audit_item: 'Bathroom Ceiling Light & Exhaust Fan Air Extraction' },
-      { id: 'cp-1bhk-25', room_name: 'Balcony', category_name: 'Doors', audit_item: 'Balcony Sliding Door Rollers & Lock Latch' },
-      { id: 'cp-1bhk-26', room_name: 'Balcony', category_name: 'Civil', audit_item: 'Balcony Handrail Height, Fixation & Paint' },
-      { id: 'cp-1bhk-27', room_name: 'Balcony', category_name: 'Civil', audit_item: 'Floor Waterproofing & Water Slope to Drain' },
-      { id: 'cp-1bhk-28', room_name: 'Electrical DB', category_name: 'Electrical', audit_item: 'Distribution Board Wire Dressing, Labeling & Earth Continuity' }
+
+      // Hall
+      { id: 'cp-1bhk-5', room_name: 'Hall', category_name: 'Paint', audit_item: 'Wall Paint Finish & Color Uniformity' },
+      { id: 'cp-1bhk-6', room_name: 'Hall', category_name: 'Paint', audit_item: 'Ceiling Paint Smoothness & Edge Touchup' },
+      { id: 'cp-1bhk-7', room_name: 'Hall', category_name: 'Windows', audit_item: 'Window Frame Fixation, Lock & Glass Sealant' },
+      { id: 'cp-1bhk-8', room_name: 'Hall', category_name: 'Electrical', audit_item: 'Power Sockets, Switches & TV Point Testing' },
+      { id: 'cp-1bhk-9', room_name: 'Hall', category_name: 'Tiles', audit_item: 'Skirting Tiles Alignment & Joint Silicone' },
+
+      // Bedroom
+      { id: 'cp-1bhk-10', room_name: 'Bedroom', category_name: 'Paint', audit_item: 'Paint Finish' },
+      { id: 'cp-1bhk-11', room_name: 'Bedroom', category_name: 'Paint', audit_item: 'Wall Paint' },
+      { id: 'cp-1bhk-12', room_name: 'Bedroom', category_name: 'Paint', audit_item: 'Ceiling Paint' },
+      { id: 'cp-1bhk-13', room_name: 'Bedroom', category_name: 'Tiles', audit_item: 'Floor Tiles' },
+      { id: 'cp-1bhk-14', room_name: 'Bedroom', category_name: 'Furniture', audit_item: 'Wardrobe' },
+      { id: 'cp-1bhk-15', room_name: 'Bedroom', category_name: 'Windows', audit_item: 'Window' },
+      { id: 'cp-1bhk-16', room_name: 'Bedroom', category_name: 'Doors', audit_item: 'Door' },
+      { id: 'cp-1bhk-17', room_name: 'Bedroom', category_name: 'Doors', audit_item: 'Door Lock' },
+      { id: 'cp-1bhk-18', room_name: 'Bedroom', category_name: 'Electrical', audit_item: 'Switches' },
+      { id: 'cp-1bhk-19', room_name: 'Bedroom', category_name: 'Electrical', audit_item: 'Sockets' },
+      { id: 'cp-1bhk-20', room_name: 'Bedroom', category_name: 'Lighting', audit_item: 'Lighting' },
+      { id: 'cp-1bhk-21', room_name: 'Bedroom', category_name: 'Cleaning', audit_item: 'Cleaning' },
+
+      // Kitchen
+      { id: 'cp-1bhk-22', room_name: 'Kitchen', category_name: 'Kitchen', audit_item: 'Cabinets' },
+      { id: 'cp-1bhk-23', room_name: 'Kitchen', category_name: 'Kitchen', audit_item: 'Countertop' },
+      { id: 'cp-1bhk-24', room_name: 'Kitchen', category_name: 'Plumbing', audit_item: 'Sink' },
+      { id: 'cp-1bhk-25', room_name: 'Kitchen', category_name: 'Plumbing', audit_item: 'Mixer' },
+      { id: 'cp-1bhk-26', room_name: 'Kitchen', category_name: 'Plumbing', audit_item: 'Drain' },
+      { id: 'cp-1bhk-27', room_name: 'Kitchen', category_name: 'Tiles', audit_item: 'Wall Tiles' },
+      { id: 'cp-1bhk-28', room_name: 'Kitchen', category_name: 'Tiles', audit_item: 'Floor Tiles' },
+      { id: 'cp-1bhk-29', room_name: 'Kitchen', category_name: 'Architectural', audit_item: 'Silicone' },
+      { id: 'cp-1bhk-30', room_name: 'Kitchen', category_name: 'Electrical', audit_item: 'Switches' },
+      { id: 'cp-1bhk-31', room_name: 'Kitchen', category_name: 'Lighting', audit_item: 'Lighting' },
+      { id: 'cp-1bhk-32', room_name: 'Kitchen', category_name: 'Cleaning', audit_item: 'Cleaning' },
+
+      // Bathroom
+      { id: 'cp-1bhk-33', room_name: 'Bathroom', category_name: 'Plumbing', audit_item: 'Toilet' },
+      { id: 'cp-1bhk-34', room_name: 'Bathroom', category_name: 'Plumbing', audit_item: 'Wash Basin' },
+      { id: 'cp-1bhk-35', room_name: 'Bathroom', category_name: 'Architectural', audit_item: 'Mirror' },
+      { id: 'cp-1bhk-36', room_name: 'Bathroom', category_name: 'Plumbing', audit_item: 'Drain' },
+      { id: 'cp-1bhk-37', room_name: 'Bathroom', category_name: 'Civil', audit_item: 'Waterproofing' },
+      { id: 'cp-1bhk-38', room_name: 'Bathroom', category_name: 'Bathroom Accessories', audit_item: 'Accessories' },
+      { id: 'cp-1bhk-39', room_name: 'Bathroom', category_name: 'Lighting', audit_item: 'Lighting' },
+      { id: 'cp-1bhk-40', room_name: 'Bathroom', category_name: 'Cleaning', audit_item: 'Cleaning' },
+
+      // Balcony
+      { id: 'cp-1bhk-41', room_name: 'Balcony', category_name: 'Doors', audit_item: 'Sliding Door Rollers & Weather Seal' },
+      { id: 'cp-1bhk-42', room_name: 'Balcony', category_name: 'Civil', audit_item: 'Railing Height & Anchor Bolts' },
+      { id: 'cp-1bhk-43', room_name: 'Balcony', category_name: 'Civil', audit_item: 'Floor Waterproofing & Water Slope' },
+
+      // Electrical DB
+      { id: 'cp-1bhk-44', room_name: 'Electrical DB', category_name: 'Electrical', audit_item: 'Distribution Board Wire Dressing & Earth Continuity' }
     ]
   },
   {
@@ -422,22 +453,65 @@ export const FOUR_DEFAULT_TEMPLATES: Omit<InspectionTemplate, 'company_id'>[] = 
     code: 'TPL-2BHK',
     version: '1.0',
     purpose: 'Used only for selected 2 Bedroom residential units.',
+    target_project_types: ['residential', 'villa', 'compound'],
     is_active: true,
     rooms: ['Entrance', 'Hall', 'Bedroom 1', 'Bedroom 2', 'Kitchen', 'Bathroom 1', 'Bathroom 2', 'Balcony', 'Electrical DB'],
     categories: ['Civil', 'Architectural', 'Paint', 'Tiles', 'Doors', 'Windows', 'Kitchen', 'Furniture', 'Electrical', 'Lighting', 'Plumbing', 'Bathroom Accessories', 'Cleaning', 'Final Handover'],
-    checkpoint_count: 36,
+    checkpoint_count: 48,
     assigned_project_ids: ['proj-1'],
     created_at: new Date().toISOString(),
     checkpoints: [
-      { id: 'cp-2bhk-1', room_name: 'Entrance', category_name: 'Doors', audit_item: 'Main Door Alignment, Hinges & Lock Test' },
-      { id: 'cp-2bhk-2', room_name: 'Hall', category_name: 'Paint', audit_item: 'Living Room Wall & Ceiling Paint Finish' },
-      { id: 'cp-2bhk-3', room_name: 'Bedroom 1', category_name: 'Doors', audit_item: 'Master Bedroom Door & Lock Clearance' },
-      { id: 'cp-2bhk-4', room_name: 'Bedroom 2', category_name: 'Doors', audit_item: 'Bedroom 2 Door & Window Latch Check' },
-      { id: 'cp-2bhk-5', room_name: 'Kitchen', category_name: 'Kitchen', audit_item: 'Cabinet Alignment, Countertop Finish & Sink Test' },
-      { id: 'cp-2bhk-6', room_name: 'Bathroom 1', category_name: 'Plumbing', audit_item: 'Master Bathroom Basin, WC & Shower Pressure Test' },
-      { id: 'cp-2bhk-7', room_name: 'Bathroom 2', category_name: 'Plumbing', audit_item: 'Guest Bathroom Basin, WC & Drain Slope Test' },
-      { id: 'cp-2bhk-8', room_name: 'Balcony', category_name: 'Civil', audit_item: 'Balcony Sliding Door & Railing Anchor Security' },
-      { id: 'cp-2bhk-9', room_name: 'Electrical DB', category_name: 'Electrical', audit_item: 'DB Isolator Sizing, Wire Dressing & Earth Continuity' }
+      { id: 'cp-2bhk-1', room_name: 'Entrance', category_name: 'Doors', audit_item: 'Main Door Alignment & Lock' },
+      { id: 'cp-2bhk-2', room_name: 'Hall', category_name: 'Paint', audit_item: 'Living Room Wall & Ceiling Paint' },
+      { id: 'cp-2bhk-3', room_name: 'Bedroom 1', category_name: 'Paint', audit_item: 'Paint Finish' },
+      { id: 'cp-2bhk-4', room_name: 'Bedroom 1', category_name: 'Paint', audit_item: 'Wall Paint' },
+      { id: 'cp-2bhk-5', room_name: 'Bedroom 1', category_name: 'Paint', audit_item: 'Ceiling Paint' },
+      { id: 'cp-2bhk-6', room_name: 'Bedroom 1', category_name: 'Tiles', audit_item: 'Floor Tiles' },
+      { id: 'cp-2bhk-7', room_name: 'Bedroom 1', category_name: 'Furniture', audit_item: 'Wardrobe' },
+      { id: 'cp-2bhk-8', room_name: 'Bedroom 1', category_name: 'Windows', audit_item: 'Window' },
+      { id: 'cp-2bhk-9', room_name: 'Bedroom 1', category_name: 'Doors', audit_item: 'Door' },
+      { id: 'cp-2bhk-10', room_name: 'Bedroom 1', category_name: 'Doors', audit_item: 'Door Lock' },
+      { id: 'cp-2bhk-11', room_name: 'Bedroom 1', category_name: 'Electrical', audit_item: 'Switches' },
+      { id: 'cp-2bhk-12', room_name: 'Bedroom 1', category_name: 'Electrical', audit_item: 'Sockets' },
+      { id: 'cp-2bhk-13', room_name: 'Bedroom 1', category_name: 'Lighting', audit_item: 'Lighting' },
+      { id: 'cp-2bhk-14', room_name: 'Bedroom 1', category_name: 'Cleaning', audit_item: 'Cleaning' },
+
+      { id: 'cp-2bhk-15', room_name: 'Bedroom 2', category_name: 'Paint', audit_item: 'Paint Finish' },
+      { id: 'cp-2bhk-16', room_name: 'Bedroom 2', category_name: 'Paint', audit_item: 'Wall Paint' },
+      { id: 'cp-2bhk-17', room_name: 'Bedroom 2', category_name: 'Paint', audit_item: 'Ceiling Paint' },
+      { id: 'cp-2bhk-18', room_name: 'Bedroom 2', category_name: 'Tiles', audit_item: 'Floor Tiles' },
+      { id: 'cp-2bhk-19', room_name: 'Bedroom 2', category_name: 'Furniture', audit_item: 'Wardrobe' },
+      { id: 'cp-2bhk-20', room_name: 'Bedroom 2', category_name: 'Windows', audit_item: 'Window' },
+      { id: 'cp-2bhk-21', room_name: 'Bedroom 2', category_name: 'Doors', audit_item: 'Door' },
+      { id: 'cp-2bhk-22', room_name: 'Bedroom 2', category_name: 'Doors', audit_item: 'Door Lock' },
+      { id: 'cp-2bhk-23', room_name: 'Bedroom 2', category_name: 'Electrical', audit_item: 'Switches' },
+      { id: 'cp-2bhk-24', room_name: 'Bedroom 2', category_name: 'Electrical', audit_item: 'Sockets' },
+      { id: 'cp-2bhk-25', room_name: 'Bedroom 2', category_name: 'Lighting', audit_item: 'Lighting' },
+      { id: 'cp-2bhk-26', room_name: 'Bedroom 2', category_name: 'Cleaning', audit_item: 'Cleaning' },
+
+      { id: 'cp-2bhk-27', room_name: 'Kitchen', category_name: 'Kitchen', audit_item: 'Cabinets' },
+      { id: 'cp-2bhk-28', room_name: 'Kitchen', category_name: 'Kitchen', audit_item: 'Countertop' },
+      { id: 'cp-2bhk-29', room_name: 'Kitchen', category_name: 'Plumbing', audit_item: 'Sink' },
+      { id: 'cp-2bhk-30', room_name: 'Kitchen', category_name: 'Plumbing', audit_item: 'Mixer' },
+      { id: 'cp-2bhk-31', room_name: 'Kitchen', category_name: 'Plumbing', audit_item: 'Drain' },
+      { id: 'cp-2bhk-32', room_name: 'Kitchen', category_name: 'Tiles', audit_item: 'Wall Tiles' },
+      { id: 'cp-2bhk-33', room_name: 'Kitchen', category_name: 'Tiles', audit_item: 'Floor Tiles' },
+      { id: 'cp-2bhk-34', room_name: 'Kitchen', category_name: 'Architectural', audit_item: 'Silicone' },
+      { id: 'cp-2bhk-35', room_name: 'Kitchen', category_name: 'Electrical', audit_item: 'Switches' },
+      { id: 'cp-2bhk-36', room_name: 'Kitchen', category_name: 'Lighting', audit_item: 'Lighting' },
+      { id: 'cp-2bhk-37', room_name: 'Kitchen', category_name: 'Cleaning', audit_item: 'Cleaning' },
+
+      { id: 'cp-2bhk-38', room_name: 'Bathroom 1', category_name: 'Plumbing', audit_item: 'Toilet' },
+      { id: 'cp-2bhk-39', room_name: 'Bathroom 1', category_name: 'Plumbing', audit_item: 'Wash Basin' },
+      { id: 'cp-2bhk-40', room_name: 'Bathroom 1', category_name: 'Architectural', audit_item: 'Mirror' },
+      { id: 'cp-2bhk-41', room_name: 'Bathroom 1', category_name: 'Plumbing', audit_item: 'Drain' },
+      { id: 'cp-2bhk-42', room_name: 'Bathroom 1', category_name: 'Civil', audit_item: 'Waterproofing' },
+      { id: 'cp-2bhk-43', room_name: 'Bathroom 1', category_name: 'Bathroom Accessories', audit_item: 'Accessories' },
+      { id: 'cp-2bhk-44', room_name: 'Bathroom 1', category_name: 'Lighting', audit_item: 'Lighting' },
+      { id: 'cp-2bhk-45', room_name: 'Bathroom 1', category_name: 'Cleaning', audit_item: 'Cleaning' },
+
+      { id: 'cp-2bhk-46', room_name: 'Balcony', category_name: 'Civil', audit_item: 'Balcony Railing & Waterproofing' },
+      { id: 'cp-2bhk-47', room_name: 'Electrical DB', category_name: 'Electrical', audit_item: 'Distribution Board Wire Dressing & Earth Continuity' }
     ]
   },
   {
@@ -445,22 +519,25 @@ export const FOUR_DEFAULT_TEMPLATES: Omit<InspectionTemplate, 'company_id'>[] = 
     title: 'Common Facilities Inspection Checklist',
     code: 'TPL-FAC',
     version: '1.0',
-    purpose: 'Used for Gym, Management Office, Security Office, Guard Room, Electrical Room, Pump Room, Generator Room, Water Tank, Parking, Children Play Area, Common Toilets, Landscape.',
+    purpose: 'Used for Gym, Management Office, Guard Room, Security Office, Pump Room, Generator Room, Electrical Room, Parking, Landscape, Children Play Area.',
+    target_project_types: ['residential', 'villa', 'compound'],
     is_active: true,
-    rooms: ['Gym', 'Management Office', 'Security Office', 'Guard Room', 'Electrical Room', 'Pump Room', 'Generator Room', 'Water Tank', 'Parking', 'Children Play Area', 'Common Toilets', 'Landscape'],
+    rooms: ['Gym', 'Management Office', 'Guard Room', 'Security Office', 'Pump Room', 'Generator Room', 'Electrical Room', 'Parking', 'Landscape', 'Children Play Area'],
     categories: ['Civil', 'Architectural', 'Paint', 'Electrical', 'Lighting', 'Plumbing', 'HVAC', 'Fire Fighting', 'Furniture', 'Cleaning', 'Safety', 'Signage'],
     checkpoint_count: 24,
     assigned_project_ids: ['proj-1'],
     created_at: new Date().toISOString(),
     checkpoints: [
-      { id: 'cp-fac-1', room_name: 'Gym', category_name: 'HVAC', audit_item: 'Gym AC Cooling, Flooring Rubber Matting & Mirror Integrity' },
+      { id: 'cp-fac-1', room_name: 'Gym', category_name: 'HVAC', audit_item: 'Gym AC Cooling, Rubber Flooring & Mirror Integrity' },
       { id: 'cp-fac-2', room_name: 'Management Office', category_name: 'Furniture', audit_item: 'Office Desk, Chairs & Data Socket Patching' },
-      { id: 'cp-fac-3', room_name: 'Security Office', category_name: 'Electrical', audit_item: 'CCTV Monitor Rack Power & Intercom Main Unit' },
-      { id: 'cp-fac-4', room_name: 'Electrical Room', category_name: 'Electrical', audit_item: 'Main LV Panel Labeling, Rubber Mat & Emergency Light' },
-      { id: 'cp-fac-5', room_name: 'Pump Room', category_name: 'Plumbing', audit_item: 'Booster Pump Pressure Switch & Pipe Flange Seals' },
+      { id: 'cp-fac-3', room_name: 'Guard Room', category_name: 'Civil', audit_item: 'Guard Room Window Glass & Gate Controls' },
+      { id: 'cp-fac-4', room_name: 'Security Office', category_name: 'Electrical', audit_item: 'CCTV Monitor Rack Power & Intercom Unit' },
+      { id: 'cp-fac-5', room_name: 'Pump Room', category_name: 'Plumbing', audit_item: 'Booster Pump Pressure Switch & Pipe Flanges' },
       { id: 'cp-fac-6', room_name: 'Generator Room', category_name: 'Electrical', audit_item: 'ATS Auto Transfer Switch & Exhaust Pipe Insulation' },
-      { id: 'cp-fac-7', room_name: 'Common Toilets', category_name: 'Plumbing', audit_item: 'Commercial Sensor Taps, Flush Valves & Floor Drain' },
-      { id: 'cp-fac-8', room_name: 'Children Play Area', category_name: 'Safety', audit_item: 'Play Equipment Anchor Bolts & EPDM Impact Flooring' }
+      { id: 'cp-fac-7', room_name: 'Electrical Room', category_name: 'Electrical', audit_item: 'Main LV Panel Labeling, Rubber Mat & Emergency Light' },
+      { id: 'cp-fac-8', room_name: 'Parking', category_name: 'Civil', audit_item: 'Parking Line Marking, Wheel Stops & Epoxy Coating' },
+      { id: 'cp-fac-9', room_name: 'Landscape', category_name: 'Civil', audit_item: 'Soft Landscape Irrigation Line & Plant Health' },
+      { id: 'cp-fac-10', room_name: 'Children Play Area', category_name: 'Safety', audit_item: 'Play Equipment Anchor Bolts & EPDM Impact Flooring' }
     ]
   },
   {
@@ -468,20 +545,22 @@ export const FOUR_DEFAULT_TEMPLATES: Omit<InspectionTemplate, 'company_id'>[] = 
     title: 'External Works Inspection Checklist',
     code: 'TPL-EXT',
     version: '1.0',
-    purpose: 'Used for Roads, Boundary Wall, Street Lighting, Footpaths, Landscape, Parking, Drainage, External Gates, External Painting.',
+    purpose: 'Used for Roads, Boundary Wall, Street Lighting, Drainage, Footpaths, Parking, Landscape.',
+    target_project_types: ['residential', 'villa', 'compound'],
     is_active: true,
-    rooms: ['Roads', 'Boundary Wall', 'Street Lighting', 'Footpaths', 'Landscape', 'Parking', 'Drainage', 'External Gates', 'External Painting'],
+    rooms: ['Roads', 'Boundary Wall', 'Street Lighting', 'Drainage', 'Footpaths', 'Parking', 'Landscape'],
     categories: ['Civil', 'Road Works', 'Concrete', 'Interlock', 'Drainage', 'Street Lighting', 'Landscape', 'Boundary Wall', 'Cleaning', 'Final Handover'],
     checkpoint_count: 20,
     assigned_project_ids: ['proj-1'],
     created_at: new Date().toISOString(),
     checkpoints: [
-      { id: 'cp-ext-1', room_name: 'Roads', category_name: 'Road Works', audit_item: 'Asphalt Wearing Course Slope, Compaction & Curbstone Alignment' },
+      { id: 'cp-ext-1', room_name: 'Roads', category_name: 'Road Works', audit_item: 'Asphalt Wearing Course Slope & Curbstone Alignment' },
       { id: 'cp-ext-2', room_name: 'Boundary Wall', category_name: 'Civil', audit_item: 'Boundary Wall Plastering, Weatherproof Paint & Expansion Joints' },
-      { id: 'cp-ext-3', room_name: 'Street Lighting', category_name: 'Street Lighting', audit_item: 'Lighting Pole Foundation, Earthing Spike & Automatic Timer' },
-      { id: 'cp-ext-4', room_name: 'Footpaths', category_name: 'Interlock', audit_item: 'Interlock Paver Pattern, Sand Filling & Ramp Slopes' },
-      { id: 'cp-ext-5', room_name: 'Drainage', category_name: 'Drainage', audit_item: 'Stormwater Gully Grates, Manhole Covers & Flow Clearance' },
-      { id: 'cp-ext-6', room_name: 'External Gates', category_name: 'Civil', audit_item: 'Automatic Sliding Gate Motor, Infrared Safety Sensor & Paint' }
+      { id: 'cp-ext-3', room_name: 'Street Lighting', category_name: 'Street Lighting', audit_item: 'Lighting Pole Foundation, Earthing Spike & Timer' },
+      { id: 'cp-ext-4', room_name: 'Drainage', category_name: 'Drainage', audit_item: 'Stormwater Gully Grates, Manhole Covers & Flow Clearance' },
+      { id: 'cp-ext-5', room_name: 'Footpaths', category_name: 'Interlock', audit_item: 'Interlock Paver Pattern, Sand Filling & Ramp Slopes' },
+      { id: 'cp-ext-6', room_name: 'Parking', category_name: 'Civil', audit_item: 'External Visitor Parking Paving & Signage' },
+      { id: 'cp-ext-7', room_name: 'Landscape', category_name: 'Landscape', audit_item: 'Tree Planting, Soil Preparation & Drip Lines' }
     ]
   }
 ];
@@ -789,67 +868,13 @@ export const seedIzdiharProject = () => {
   });
   localStorage.setItem('snaglist_projects', JSON.stringify(projectsList));
 
-  // 3. Generate Master Inspection Templates (350-500 checkpoints)
-  const masterTemplates: InspectionTemplate[] = (safeParseList('snaglist_templates') || []).filter((t: any) => t && !t.id.startsWith('tpl-izd-'));
-  
-  const roomsForChecklists = [
-    'Entrance', 'Hall', 'Living Room', 'Dining Room', 'Kitchen', 
-    'Bathroom', 'Master Bedroom', 'Bedroom 2', 'Bedroom 3', 
-    'Maid Room', 'Store', 'Laundry', 'Balcony', 'Staircase', 
-    'Corridor', 'Electrical Panel', 'Mechanical Area', 'Roof', 'External Elevation'
-  ];
+  // 3. Keep ONLY the Four Default Inspection Checklist Templates
+  safeSetItem('snaglist_templates', FOUR_DEFAULT_TEMPLATES.map(t => ({ ...t, company_id: DEFAULT_ORG_ID })));
 
-  const checksByCat = [
-    { cat: 'Painting', check: 'Check wall paint for roller marks, touch-ups and uniformity' },
-    { cat: 'Painting', check: 'Inspect ceiling paint finish for patches or peeling' },
-    { cat: 'Gypsum Ceiling', check: 'Check gypsum board ceiling joints for tape hairline cracks' },
-    { cat: 'Gypsum Ceiling', check: 'Verify gypsum ceiling level and drop alignment' },
-    { cat: 'Lighting', check: 'Test light fixture operations and verify lux levels' },
-    { cat: 'Lighting', check: 'Check switches alignment, level and gaps' },
-    { cat: 'Electrical', check: 'Verify wall sockets terminal polarity and earth connection' },
-    { cat: 'Electrical', check: 'Check circuit breakers labeling and DB dressing safety' },
-    { cat: 'Low Current', check: 'Test TV outlet signal level and coax termination' },
-    { cat: 'Low Current', check: 'Test RJ45 internet port continuity and speed' },
-    { cat: 'Floor Tiles', check: 'Verify floor tile slopes towards drainage floor traps' },
-    { cat: 'Floor Tiles', check: 'Check floor tiles lippage and grout joint widths' },
-    { cat: 'Wall Tiles', check: 'Verify wall tile verticality, plumb and grout joint consistency' },
-    { cat: 'Doors', check: 'Check timber door frame anchors, paint and architrave joints' },
-    { cat: 'Doors', check: 'Verify door lock latches and key cylinder operation smoothness' },
-    { cat: 'Windows', check: 'Inspect aluminium window sliding tracks and locking handles' },
-    { cat: 'Glass', check: 'Check window double-glazed glass panes for deep cleaning scratches' },
-    { cat: 'Glass', check: 'Verify shower glass panel bottom seals for water leaks' },
-    { cat: 'Waterproofing', check: 'Conduct wet area floor waterproofing pond testing' },
-    { cat: 'Sanitary Fixtures', check: 'Inspect wash basin mixers for hot/cold indicator labels' },
-    { cat: 'Plumbing', check: 'Test under-sink flexi hoses for high water pressure leaks' },
-    { cat: 'Cleaning', check: 'Verify general cleanup, removing cement grout stains and dust' }
-  ];
-
-  let tCounter = 1;
-  const newTemplates: InspectionTemplate[] = [];
-  roomsForChecklists.forEach((rName) => {
-    checksByCat.forEach((chk) => {
-      newTemplates.push({
-        id: `tpl-izd-${tCounter++}`,
-        company_id: DEFAULT_ORG_ID,
-        title: `${chk.check} in ${rName}`,
-        code: `TPL-IZD-${tCounter}`,
-        version: '1.0',
-        purpose: `QA/QC Inspection Checkpoint for ${chk.cat} in ${rName}`,
-        category_name: chk.cat,
-        audit_item: `${chk.check} in ${rName}`,
-        is_active: true,
-        created_at: new Date().toISOString()
-      });
-    });
-  });
-  localStorage.setItem('snaglist_templates', JSON.stringify([...masterTemplates, ...newTemplates]));
-
-  // 4. Generate project nodes tree
+  // 4. Generate project nodes tree (30 Villas -> Ground Floor / First Floor -> Units G1-G4, F1-F4 -> Rooms)
   const nodesList: ProjectNode[] = (safeParseList('snaglist_nodes') || []).filter((n: any) => n && n.project_id !== projectId);
-
   const newNodes: ProjectNode[] = [];
 
-  // Generate 30 Villas
   for (let v = 1; v <= 30; v++) {
     const vId = `d0000000-0000-0000-0000-0000000010${String(v).padStart(2, '0')}`;
     const is2BHKVilla = v <= 10;
@@ -866,42 +891,59 @@ export const seedIzdiharProject = () => {
       updated_at: new Date().toISOString()
     });
 
-    const unitTypes = ['Ground Floor Unit', 'First Floor Unit', 'Second Floor Unit', 'Penthouse Unit'];
-    unitTypes.forEach((uName, uIndex) => {
-      const uId = `d0000000-0000-0000-0000-0000000020${String(v).padStart(2, '0')}${uIndex + 1}`;
+    const floors = [
+      { name: 'Ground Floor', units: ['Unit G1', 'Unit G2', 'Unit G3', 'Unit G4'] },
+      { name: 'First Floor', units: ['Unit F1', 'Unit F2', 'Unit F3', 'Unit F4'] }
+    ];
+
+    floors.forEach((fl, flIndex) => {
+      const flId = `d0000000-0000-0000-0000-00000000fl${String(v).padStart(2, '0')}${flIndex + 1}`;
       newNodes.push({
-        id: uId,
+        id: flId,
         project_id: projectId,
         parent_id: vId,
         company_id: DEFAULT_ORG_ID,
-        name: uName,
-        node_type: 'Unit',
-        description: `${uName} of Villa ${String(v).padStart(2, '0')}`,
+        name: fl.name,
+        node_type: 'Floor',
+        description: `${fl.name} Level of Villa ${String(v).padStart(2, '0')}`,
         completion_rate: Math.floor(Math.random() * 30) + 55,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
 
-      let unitRooms: string[] = [];
-      if (is2BHKVilla) {
-        unitRooms = ['Entrance', 'Hall', 'Bedroom 1', 'Bedroom 2', 'Kitchen', 'Bathroom 1', 'Bathroom 2', 'Balcony', 'Electrical DB'];
-      } else {
-        unitRooms = ['Entrance', 'Hall', 'Bedroom', 'Kitchen', 'Bathroom', 'Balcony', 'Electrical DB'];
-      }
-
-      unitRooms.forEach((rName, rIndex) => {
-        const rId = `d0000000-0000-0000-0000-000000003${String(v).padStart(2, '0')}${uIndex + 1}${String(rIndex).padStart(2, '0')}`;
+      fl.units.forEach((uName, uIndex) => {
+        const uId = `d0000000-0000-0000-0000-0000000020${String(v).padStart(2, '0')}${flIndex + 1}${uIndex + 1}`;
         newNodes.push({
-          id: rId,
+          id: uId,
           project_id: projectId,
-          parent_id: uId,
+          parent_id: flId,
           company_id: DEFAULT_ORG_ID,
-          name: rName,
-          node_type: 'Room/Area',
-          description: `${rName} area in ${uName}`,
-          completion_rate: Math.floor(Math.random() * 35) + 50,
+          name: uName,
+          node_type: 'Unit',
+          description: `${uName} of Villa ${String(v).padStart(2, '0')}`,
+          completion_rate: Math.floor(Math.random() * 30) + 55,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
+        });
+
+        const unitRooms = is2BHKVilla
+          ? ['Entrance', 'Hall', 'Bedroom 1', 'Bedroom 2', 'Kitchen', 'Bathroom 1', 'Bathroom 2', 'Balcony', 'Electrical DB']
+          : ['Entrance', 'Hall', 'Bedroom', 'Kitchen', 'Bathroom', 'Balcony', 'Electrical DB'];
+
+        unitRooms.forEach((rName, rIndex) => {
+          const rId = `d0000000-0000-0000-0000-000000003${String(v).padStart(2, '0')}${flIndex + 1}${uIndex + 1}${String(rIndex).padStart(2, '0')}`;
+          newNodes.push({
+            id: rId,
+            project_id: projectId,
+            parent_id: uId,
+            company_id: DEFAULT_ORG_ID,
+            name: rName,
+            node_type: 'Room/Area',
+            description: `${rName} area in ${uName}`,
+            completion_rate: Math.floor(Math.random() * 35) + 50,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
         });
       });
     });
@@ -1846,7 +1888,7 @@ export const dbService = {
         parent_id: null,
         company_id: companyId,
         name: villaName,
-        node_type: proj.level_structure[0] || 'Villa',
+        node_type: 'Villa',
         description: is2BHK ? 'Luxury 2 BHK Villa' : 'Standard 1 BHK Villa',
         completion_rate: 0,
         created_at: new Date().toISOString(),
@@ -1854,44 +1896,62 @@ export const dbService = {
       };
       newNodes.push(villaNode);
 
-      for (let u = 1; u <= unitsPerVilla; u++) {
-        const unitNames = ['Unit G (Ground Floor)', 'Unit 1 (First Floor)', 'Unit 2 (Second Floor)', 'Unit P (Penthouse)'];
-        const uName = unitNames[u - 1] || `Unit ${u}`;
-        const uId = `${vId}-u${u}`;
+      // Floors: Ground Floor (Units G1-G4) & First Floor (Units F1-F4)
+      const floors = [
+        { name: 'Ground Floor', units: ['Unit G1', 'Unit G2', 'Unit G3', 'Unit G4'] },
+        { name: 'First Floor', units: ['Unit F1', 'Unit F2', 'Unit F3', 'Unit F4'] }
+      ];
 
-        const unitNode: ProjectNode = {
-          id: uId,
+      floors.forEach((fl, flIdx) => {
+        const flId = `${vId}-fl${flIdx + 1}`;
+        newNodes.push({
+          id: flId,
           project_id: projectId,
           parent_id: vId,
           company_id: companyId,
-          name: uName,
-          node_type: proj.level_structure[1] || 'Unit',
-          description: is2BHK ? '2 BHK Residential Layout' : '1 BHK Residential Layout',
+          name: fl.name,
+          node_type: 'Floor',
+          description: `${fl.name} Level`,
           completion_rate: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        };
-        newNodes.push(unitNode);
+        });
 
-        const rooms = is2BHK
-          ? ['Entrance', 'Hall', 'Bedroom 1', 'Bedroom 2', 'Kitchen', 'Bathroom 1', 'Bathroom 2', 'Balcony', 'Electrical DB']
-          : ['Entrance', 'Hall', 'Bedroom', 'Kitchen', 'Bathroom', 'Balcony', 'Electrical DB'];
-
-        rooms.forEach((rName, rIdx) => {
-          roomCount++;
+        fl.units.forEach((uName, uIdx) => {
+          const uId = `${flId}-u${uIdx + 1}`;
           newNodes.push({
-            id: `${uId}-r${rIdx + 1}`,
+            id: uId,
             project_id: projectId,
-            parent_id: uId,
+            parent_id: flId,
             company_id: companyId,
-            name: rName,
-            node_type: proj.level_structure[2] || 'Room/Area',
+            name: uName,
+            node_type: 'Unit',
+            description: is2BHK ? '2 BHK Residential Layout' : '1 BHK Residential Layout',
             completion_rate: 0,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
+
+          const rooms = is2BHK
+            ? ['Entrance', 'Hall', 'Bedroom 1', 'Bedroom 2', 'Kitchen', 'Bathroom 1', 'Bathroom 2', 'Balcony', 'Electrical DB']
+            : ['Entrance', 'Hall', 'Bedroom', 'Kitchen', 'Bathroom', 'Balcony', 'Electrical DB'];
+
+          rooms.forEach((rName, rIdx) => {
+            roomCount++;
+            newNodes.push({
+              id: `${uId}-r${rIdx + 1}`,
+              project_id: projectId,
+              parent_id: uId,
+              company_id: companyId,
+              name: rName,
+              node_type: 'Room/Area',
+              completion_rate: 0,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          });
         });
-      }
+      });
     }
 
     // Common Facilities
@@ -2015,7 +2075,23 @@ export const dbService = {
 
   getRoomCheckpoints: (nodeId: string): RoomCheckpoint[] => {
     const all = safeParseList<RoomCheckpoint>('snaglist_checkpoints');
-    return all.filter(c => c.node_id === nodeId);
+    const directMatches = all.filter(c => c.node_id === nodeId);
+    if (directMatches.length > 0) return directMatches;
+
+    // If nodeId is a parent (Unit, Floor, Villa), aggregate child room checkpoints
+    const nodes = safeParseList<ProjectNode>('snaglist_nodes');
+    const getChildNodeIds = (pId: string): string[] => {
+      const children = nodes.filter(n => n.parent_id === pId);
+      let ids: string[] = [];
+      children.forEach(c => {
+        ids.push(c.id);
+        ids = ids.concat(getChildNodeIds(c.id));
+      });
+      return ids;
+    };
+
+    const childIds = getChildNodeIds(nodeId);
+    return all.filter(c => childIds.includes(c.node_id));
   },
 
   getProjectCheckpoints: (projectId: string): RoomCheckpoint[] => {
