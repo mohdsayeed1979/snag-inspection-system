@@ -43,48 +43,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Initializing the mock DB on application mount
-    initializeMockDatabase();
-    
-    // Load current user from local storage or set default
-    const storedUserEmail = localStorage.getItem('snaglist_current_user_email');
-    const profilesJson = localStorage.getItem('snaglist_profiles');
-    
-    let loadedProfiles = SEED_PROFILES;
-    if (profilesJson && profilesJson !== 'null' && profilesJson !== 'undefined') {
-      try {
-        const parsed = JSON.parse(profilesJson);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          loadedProfiles = parsed;
-          setAllProfiles(loadedProfiles);
+    try {
+      // Initializing the mock DB on application mount
+      initializeMockDatabase();
+      
+      // Load current user from local storage or set default
+      const storedUserEmail = typeof window !== 'undefined' ? localStorage.getItem('snaglist_current_user_email') : null;
+      const profilesJson = typeof window !== 'undefined' ? localStorage.getItem('snaglist_profiles') : null;
+      
+      let loadedProfiles = SEED_PROFILES;
+      if (profilesJson && profilesJson !== 'null' && profilesJson !== 'undefined') {
+        try {
+          const parsed = JSON.parse(profilesJson);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            loadedProfiles = parsed;
+            setAllProfiles(loadedProfiles);
+          }
+        } catch (e) {
+          console.error('Failed to parse profiles', e);
         }
-      } catch (e) {
-        console.error('Failed to parse profiles', e);
       }
-    }
 
-    let activeUser: Profile | null = null;
-    const emailToFind = storedUserEmail && storedUserEmail !== 'null' && storedUserEmail !== 'undefined' ? storedUserEmail : null;
-    
-    if (emailToFind && Array.isArray(loadedProfiles)) {
-      const found = loadedProfiles.find(p => p && p.email === emailToFind);
-      if (found) {
-        activeUser = found;
-      } else {
-        activeUser = loadedProfiles[0] || SEED_PROFILES[0];
+      let activeUser: Profile | null = null;
+      const emailToFind = storedUserEmail && storedUserEmail !== 'null' && storedUserEmail !== 'undefined' ? storedUserEmail : null;
+      
+      if (emailToFind && Array.isArray(loadedProfiles)) {
+        const found = loadedProfiles.find(p => p && p.email === emailToFind);
+        if (found) {
+          activeUser = found;
+        } else {
+          activeUser = loadedProfiles[0] || SEED_PROFILES[0];
+        }
+      } else if (Array.isArray(loadedProfiles) && loadedProfiles.length > 0) {
+        const defaultUser = loadedProfiles.find(p => p && p.role === 'project_manager') || loadedProfiles[0];
+        activeUser = defaultUser || SEED_PROFILES[0];
+        if (defaultUser && typeof window !== 'undefined') {
+          localStorage.setItem('snaglist_current_user_email', defaultUser.email);
+        }
       }
-    } else if (Array.isArray(loadedProfiles) && loadedProfiles.length > 0) {
-      const defaultUser = loadedProfiles.find(p => p && p.role === 'project_manager') || loadedProfiles[0];
-      activeUser = defaultUser || SEED_PROFILES[0];
-      if (defaultUser) {
-        localStorage.setItem('snaglist_current_user_email', defaultUser.email);
-      }
-    }
 
-    const finalUser = activeUser || SEED_PROFILES[0];
-    setUser(finalUser);
-    loadCompanyContext(finalUser);
-    setIsLoading(false);
+      const finalUser = activeUser || SEED_PROFILES[0];
+      setUser(finalUser);
+      loadCompanyContext(finalUser);
+    } catch (err) {
+      console.error('Error during AuthContext initialization:', err);
+      setUser(SEED_PROFILES[0]);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const switchUser = (email: string) => {
