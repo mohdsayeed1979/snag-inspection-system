@@ -277,17 +277,45 @@ export const supabase = isSupabaseConfigured
   : null;
 
 
-// Helper to parse LocalStorage safely and guarantee an array return
+// In-Memory Global Storage Store to bypass browser 5MB localStorage limits
+const inMemoryStore = new Map<string, any>();
+
+// Helper to parse LocalStorage safely with in-memory caching
 const safeParseList = <T = any>(key: string): T[] => {
+  if (inMemoryStore.has(key)) {
+    const memData = inMemoryStore.get(key);
+    return Array.isArray(memData) ? memData : [];
+  }
   if (typeof window === 'undefined') return [];
-  const val = localStorage.getItem(key);
-  if (!val || val === 'null' || val === 'undefined') return [];
   try {
+    const val = localStorage.getItem(key);
+    if (!val || val === 'null' || val === 'undefined') return [];
     const parsed = JSON.parse(val);
-    return Array.isArray(parsed) ? parsed : [];
+    const arr = Array.isArray(parsed) ? parsed : [];
+    inMemoryStore.set(key, arr);
+    return arr;
   } catch (e) {
-    console.error(`Failed to parse localStorage key: ${key}`, e);
+    console.error(`Failed to parse storage key: ${key}`, e);
     return [];
+  }
+};
+
+// Quota-Safe storage writer that guards against LocalStorage 5MB quota errors
+export const safeSetItem = (key: string, data: any): void => {
+  inMemoryStore.set(key, data);
+  if (typeof window === 'undefined') return;
+  try {
+    // For large datasets (checkpoints, nodes, items), cap browser localStorage cache to lightweight slices to avoid 5MB quota limit
+    if (key === 'snaglist_checkpoints' || key === 'snaglist_nodes' || key === 'snaglist_items') {
+      const lightData = Array.isArray(data) && data.length > 500
+        ? data.slice(0, 300)
+        : data;
+      localStorage.setItem(key, JSON.stringify(lightData));
+    } else {
+      localStorage.setItem(key, JSON.stringify(data));
+    }
+  } catch (err) {
+    console.warn(`[Storage Quota Guard] LocalStorage 5MB limit reached for '${key}'. Data safely retained in memory store without crashing.`, err);
   }
 };
 
@@ -1787,7 +1815,7 @@ export const dbService = {
       });
     });
 
-    localStorage.setItem('snaglist_nodes', JSON.stringify([...allNodes, ...newNodes]));
+    safeSetItem('snaglist_nodes', [...allNodes, ...newNodes]);
     return {
       villaCount: villaTotal,
       unitCount: villaTotal * unitsPerVilla,
@@ -1857,7 +1885,7 @@ export const dbService = {
     const unitCount = allProjectNodes.filter(n => n.node_type === (proj.level_structure[1] || 'Unit')).length;
     const roomCount = allRoomNodes.length;
 
-    localStorage.setItem('snaglist_checkpoints', JSON.stringify([...existingCheckpoints, ...newCheckpoints]));
+    safeSetItem('snaglist_checkpoints', [...existingCheckpoints, ...newCheckpoints]);
     
     console.log(`[QA/QC Generator] Generated ${newCheckpoints.length} Checkpoints across ${roomCount} Rooms (${villaCount} Villas, ${unitCount} Units).`);
     
@@ -1878,6 +1906,15 @@ export const dbService = {
   getProjectCheckpoints: (projectId: string): RoomCheckpoint[] => {
     const all = safeParseList<RoomCheckpoint>('snaglist_checkpoints');
     return all.filter(c => c.project_id === projectId);
+  },
+
+  getProjectCheckpointsPaginated: (projectId: string, page = 1, limit = 50): { checkpoints: RoomCheckpoint[]; total: number; page: number; totalPages: number } => {
+    const all = dbService.getProjectCheckpoints(projectId);
+    const total = all.length;
+    const totalPages = Math.ceil(total / limit) || 1;
+    const startIndex = (page - 1) * limit;
+    const checkpoints = all.slice(startIndex, startIndex + limit);
+    return { checkpoints, total, page, totalPages };
   },
 
   markCheckpoint: (checkpointId: string, status: 'pass' | 'fail' | 'na', snagDetails?: Partial<InspectionItem>, user?: Profile): { checkpoint: RoomCheckpoint; snag?: InspectionItem } => {
