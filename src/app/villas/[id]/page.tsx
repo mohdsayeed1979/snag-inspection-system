@@ -58,7 +58,8 @@ export default function ProjectDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const projectId = params.id as string;
+  const rawId = params?.id;
+  const projectId = (Array.isArray(rawId) ? rawId[0] : rawId) || '';
   const { user, currentCompany, canCreateSnag, canEditSnag, canChangeStatus, canDeleteSnag } = useAuth();
   
   // Tabs State: 'checklist' | 'documents'
@@ -461,7 +462,16 @@ export default function ProjectDetailsPage() {
     }
   };
 
-  if (!project) return null;
+  if (!project) {
+    return (
+      <div className="h-[60vh] flex items-center justify-center bg-background text-foreground">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm font-semibold text-muted-foreground animate-pulse">Loading project details...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Active level name helper (e.g. Block/Villa)
   const activeLevelName = (project.level_structure || ['Block', 'Villa'])[nodeBreadcrumbs.length] || 'Sub Unit';
