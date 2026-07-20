@@ -322,6 +322,16 @@ const safeParseList = <T = any>(key: string): T[] => {
   return [];
 };
 
+export const generateUuid = (): string => {
+  if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 // Quota-Safe storage writer that guards against LocalStorage 5MB quota errors
 export const safeSetItem = (key: string, data: any): void => {
   inMemoryStore.set(key, data);
@@ -329,25 +339,17 @@ export const safeSetItem = (key: string, data: any): void => {
   try {
     localStorage.setItem(key, JSON.stringify(data));
   } catch (err) {
-    console.warn(`[Storage Quota Guard] LocalStorage quota warning for '${key}'. Attempting optimized slice for checkpoints...`, err);
-    try {
-      if (key === 'snaglist_checkpoints' && Array.isArray(data)) {
-        // Strip non-essential fields for browser storage fallback if 5MB limit hit
-        const compactCheckpoints = data.map((c: any) => ({
-          id: c.id,
-          project_id: c.project_id,
-          node_id: c.node_id,
-          category_name: c.category_name,
-          audit_item: c.audit_item,
-          status: c.status,
-          snag_id: c.snag_id
-        }));
-        localStorage.setItem(key, JSON.stringify(compactCheckpoints));
-      }
-    } catch (e2) {
-      console.error(`[Storage Error] Could not save '${key}' to localStorage. Retained in memory store.`, e2);
-    }
+    console.warn(`[Storage Quota Guard] LocalStorage quota warning for '${key}'.`, err);
   }
+
+  // Push to Central Server DB Gateway & Supabase asynchronously
+  try {
+    fetch('/api/db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save_entity', key, data })
+    }).catch(e => console.warn('[Cloud Server Sync Warning]', e));
+  } catch (e) {}
 };
 
 // --- SEED SEPARATORS ---
@@ -1712,6 +1714,52 @@ export const dbService = {
     return list;
   },
 
+  // --- Cloud & Supabase Persistence Sync Gateway ---
+  syncFromCloud: async (): Promise<void> => {
+    if (typeof window === 'undefined') return;
+    try {
+      console.log('Refreshing Project List...');
+      console.log('Fetching Projects from Supabase...');
+
+      // Fetch projects from Supabase if configured
+      if (isSupabaseConfigured && supabase) {
+        const { data: supaProjects, error } = await supabase.from('projects').select('*');
+        if (!error && supaProjects && supaProjects.length > 0) {
+          console.log(`Project Found in Supabase. Count: ${supaProjects.length}`);
+          const localProjects = safeParseList<Project>('snaglist_projects');
+          const merged = [...supaProjects];
+          localProjects.forEach(lp => {
+            if (!merged.some(sp => sp.id === lp.id)) merged.push(lp);
+          });
+          safeSetItem('snaglist_projects', merged);
+        }
+      }
+
+      // Fetch from Central Server DB Gateway
+      const res = await fetch('/api/db');
+      if (res.ok) {
+        const body = await res.json();
+        if (body.store) {
+          Object.keys(body.store).forEach(key => {
+            if (Array.isArray(body.store[key]) && body.store[key].length > 0) {
+              const currentLocal = safeParseList(key);
+              if (currentLocal.length === 0 || key === 'snaglist_projects') {
+                const serverData = body.store[key];
+                const mergedData = [...serverData];
+                currentLocal.forEach((item: any) => {
+                  if (!mergedData.some((s: any) => s.id === item.id)) mergedData.push(item);
+                });
+                safeSetItem(key, mergedData);
+              }
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[SyncFromCloud Warning]', err);
+    }
+  },
+
   // --- Projects ---
   getProjects: (): Project[] => {
     if (typeof window === 'undefined') return [];
@@ -1726,19 +1774,43 @@ export const dbService = {
   },
 
   addProject: (proj: Omit<Project, 'id' | 'completion_rate' | 'created_at'>): Project => {
+    const newProjId = generateUuid();
+    console.log(`Creating Project... '${proj.name}'`);
+    
     const projects = safeParseList('snaglist_projects');
     const newProj: Project = {
       ...proj,
-      id: `proj-${Date.now()}`,
+      id: newProjId,
       completion_rate: 0,
       created_at: new Date().toISOString()
     };
-    projects.push(newProj);
-    localStorage.setItem('snaglist_projects', JSON.stringify(projects));
+    projects.unshift(newProj);
+    safeSetItem('snaglist_projects', projects);
+
+    console.log(`Calling Supabase Insert for '${newProj.name}' (${newProj.id})...`);
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('projects').insert([{
+        id: newProj.id,
+        name: newProj.name,
+        description: newProj.description || '',
+        owner: newProj.owner || 'Default Organization',
+        contractor: newProj.contractor || 'Saudi Construction Co.',
+        consultant: newProj.consultant || 'Khatib & Alami',
+        engineer: newProj.engineer || 'Eng. Ahmed',
+        completion_rate: 0,
+        created_at: newProj.created_at
+      }]).then(({ data, error }) => {
+        if (error) {
+          console.warn(`[Supabase Insert Warning] ${error.message}`);
+        } else {
+          console.log(`Insert Success. Project ID Returned: ${newProj.id}`);
+        }
+      });
+    }
 
     // Seed location levels configuration in project_nodes tree
     const rootNode: ProjectNode = {
-      id: `node-root-${Date.now()}`,
+      id: generateUuid(),
       project_id: newProj.id,
       parent_id: null,
       company_id: newProj.company_id,
@@ -1748,11 +1820,9 @@ export const dbService = {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-    const nodes = dbService.getProjectNodesByProjectId(newProj.id);
-    nodes.push(rootNode);
     const allNodes = safeParseList('snaglist_nodes');
     allNodes.push(rootNode);
-    localStorage.setItem('snaglist_nodes', JSON.stringify(allNodes));
+    safeSetItem('snaglist_nodes', allNodes);
 
     return newProj;
   },

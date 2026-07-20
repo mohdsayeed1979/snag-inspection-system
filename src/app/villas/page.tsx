@@ -67,7 +67,8 @@ export default function ProjectsPage() {
   const [newLogoUrl, setNewLogoUrl] = useState('');
   const [newStatus, setNewStatus] = useState<'active' | 'archived' | 'completed' | 'on_hold'>('active');
 
-  const loadData = () => {
+  const loadData = async () => {
+    await dbService.syncFromCloud();
     setProjects(dbService.getProjects());
     setNodes(dbService.getProjectNodes());
   };

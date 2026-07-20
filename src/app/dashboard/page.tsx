@@ -43,11 +43,15 @@ export default function Dashboard() {
 
   useEffect(() => {
     setMounted(true);
-    setProjects(dbService.getProjects());
-    setAllItems(dbService.getInspectionItems());
-    setNodes(dbService.getProjectNodes());
-    setAllCompanies(dbService.getCompanies());
-    setAllProfiles(JSON.parse(localStorage.getItem('snaglist_profiles') || '[]'));
+    const loadDashboard = async () => {
+      await dbService.syncFromCloud();
+      setProjects(dbService.getProjects());
+      setAllItems(dbService.getInspectionItems());
+      setNodes(dbService.getProjectNodes());
+      setAllCompanies(dbService.getCompanies());
+      setAllProfiles(dbService.getProfiles());
+    };
+    loadDashboard();
   }, [currentCompany]);
 
   // Default to first project when projects list loads
