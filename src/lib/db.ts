@@ -1654,6 +1654,181 @@ export const dbService = {
     };
   },
 
+  getProjectById: (id: string): Project | undefined => {
+    return dbService.getProjects().find(p => p.id === id);
+  },
+
+  generateProjectStructure: (projectId: string, options?: { villaCount?: number; unitsPerVilla?: number; twoBhkCount?: number }): { villaCount: number; unitCount: number; roomCount: number; facilityCount: number } => {
+    const proj = dbService.getProjectById(projectId);
+    if (!proj) return { villaCount: 0, unitCount: 0, roomCount: 0, facilityCount: 0 };
+
+    const villaTotal = options?.villaCount || 30;
+    const unitsPerVilla = options?.unitsPerVilla || 4;
+    const twoBhkVillas = options?.twoBhkCount || 10;
+    const companyId = proj.company_id || DEFAULT_ORG_ID;
+
+    // Remove existing nodes for this project
+    const allNodes = safeParseList<ProjectNode>('snaglist_nodes').filter(n => n.project_id !== projectId);
+    const newNodes: ProjectNode[] = [];
+
+    let roomCount = 0;
+
+    for (let v = 1; v <= villaTotal; v++) {
+      const is2BHK = v <= twoBhkVillas;
+      const villaName = `Villa ${String(v).padStart(2, '0')}`;
+      const vId = `node-gen-${projectId}-v${v}`;
+
+      const villaNode: ProjectNode = {
+        id: vId,
+        project_id: projectId,
+        parent_id: null,
+        company_id: companyId,
+        name: villaName,
+        node_type: proj.level_structure[0] || 'Villa',
+        description: is2BHK ? 'Luxury 2 BHK Villa' : 'Standard 1 BHK Villa',
+        completion_rate: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      newNodes.push(villaNode);
+
+      for (let u = 1; u <= unitsPerVilla; u++) {
+        const unitNames = ['Unit G (Ground Floor)', 'Unit 1 (First Floor)', 'Unit 2 (Second Floor)', 'Unit P (Penthouse)'];
+        const uName = unitNames[u - 1] || `Unit ${u}`;
+        const uId = `${vId}-u${u}`;
+
+        const unitNode: ProjectNode = {
+          id: uId,
+          project_id: projectId,
+          parent_id: vId,
+          company_id: companyId,
+          name: uName,
+          node_type: proj.level_structure[1] || 'Unit',
+          description: is2BHK ? '2 BHK Residential Layout' : '1 BHK Residential Layout',
+          completion_rate: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        newNodes.push(unitNode);
+
+        const rooms = is2BHK
+          ? ['Entrance', 'Hall', 'Bedroom 1', 'Bedroom 2', 'Kitchen', 'Bathroom 1', 'Bathroom 2', 'Balcony', 'Electrical DB']
+          : ['Entrance', 'Hall', 'Bedroom', 'Kitchen', 'Bathroom', 'Balcony', 'Electrical DB'];
+
+        rooms.forEach((rName, rIdx) => {
+          roomCount++;
+          newNodes.push({
+            id: `${uId}-r${rIdx + 1}`,
+            project_id: projectId,
+            parent_id: uId,
+            company_id: companyId,
+            name: rName,
+            node_type: proj.level_structure[2] || 'Room/Area',
+            completion_rate: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        });
+      }
+    }
+
+    // Common Facilities
+    const commonRootId = `node-gen-${projectId}-facilities`;
+    newNodes.push({
+      id: commonRootId,
+      project_id: projectId,
+      parent_id: null,
+      company_id: companyId,
+      name: 'Common Facilities',
+      node_type: 'Facility',
+      description: 'Compound shared utilities and infrastructure',
+      completion_rate: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+
+    const facilityNames = [
+      'Management Office', 'Gym', 'Security Office', 'Guard Room', 'Main Entrance', 
+      'Exit Gate', 'Electrical Substation', 'Pump Room', 'Water Tank', 'Generator Room', 
+      'Garbage Room', 'Parking Area', 'Soft Landscape', 'Walkways', 'Boundary Wall', 
+      'External Roads', 'Street Lighting', 'Play Area', 'Common Toilets', 'Utility Rooms'
+    ];
+
+    facilityNames.forEach((fName, fIdx) => {
+      newNodes.push({
+        id: `${commonRootId}-f${fIdx + 1}`,
+        project_id: projectId,
+        parent_id: commonRootId,
+        company_id: companyId,
+        name: fName,
+        node_type: 'Facility',
+        completion_rate: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    });
+
+    localStorage.setItem('snaglist_nodes', JSON.stringify([...allNodes, ...newNodes]));
+    return {
+      villaCount: villaTotal,
+      unitCount: villaTotal * unitsPerVilla,
+      roomCount,
+      facilityCount: facilityNames.length
+    };
+  },
+
+  generateProjectChecklists: (projectId: string, templateIds?: string[]): { itemsCreated: number } => {
+    const proj = dbService.getProjectById(projectId);
+    if (!proj) return { itemsCreated: 0 };
+
+    const companyId = proj.company_id || DEFAULT_ORG_ID;
+    const roomNodes = safeParseList<ProjectNode>('snaglist_nodes').filter(n => n.project_id === projectId && n.node_type === (proj.level_structure[2] || 'Room/Area'));
+    const allRoomNodes = roomNodes.length > 0 ? roomNodes : safeParseList<ProjectNode>('snaglist_nodes').filter(n => n.project_id === projectId && n.parent_id !== null);
+    
+    const templates = safeParseList<InspectionTemplate>('snaglist_templates');
+    const activeTemplates = templateIds && templateIds.length > 0
+      ? templates.filter(t => templateIds.includes(t.id))
+      : templates.filter(t => t.is_active);
+
+    const existingItems = safeParseList<InspectionItem>('snaglist_items').filter(i => {
+      const projNodeIds = allRoomNodes.map(n => n.id);
+      return i.villa_id !== projectId && (!i.location_node_id || !projNodeIds.includes(i.location_node_id));
+    });
+
+    const newItems: InspectionItem[] = [];
+    let counter = 1;
+
+    allRoomNodes.forEach((roomNode) => {
+      const sliceStart = counter % Math.max(1, activeTemplates.length - 2);
+      const roomTemplates = activeTemplates.slice(sliceStart, sliceStart + 3);
+
+      roomTemplates.forEach((tpl) => {
+        counter++;
+        const itemId = `snag-gen-${projectId}-${counter}`;
+        newItems.push({
+          id: itemId,
+          snag_number: `QC-${proj.project_code || 'PROJ'}-${String(counter).padStart(4, '0')}`,
+          company_id: companyId,
+          villa_id: roomNode.parent_id || projectId,
+          location_node_id: roomNode.id,
+          title: tpl.audit_item,
+          description: `Verify ${tpl.audit_item} in ${roomNode.name}. Compliance check.`,
+          priority: (counter % 3 === 0 ? 'high' : counter % 5 === 0 ? 'critical' : 'medium') as any,
+          status: (counter % 4 === 0 ? 'closed' : counter % 2 === 0 ? 'in_progress' : 'open') as any,
+          location: roomNode.name,
+          room: roomNode.name,
+          remarks: 'System generated inspection checklist item.',
+          inspection_date: new Date().toISOString().split('T')[0],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      });
+    });
+
+    localStorage.setItem('snaglist_items', JSON.stringify([...existingItems, ...newItems]));
+    return { itemsCreated: newItems.length };
+  },
+
   // --- Project Nodes (Generic Structure Tree) ---
   getProjectNodes: (): ProjectNode[] => {
     if (typeof window === 'undefined') return [];

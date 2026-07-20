@@ -52,6 +52,8 @@ import {
   CheckSquare2,
   HardHat,
   Briefcase,
+  Zap,
+  Sparkles,
   X
 } from 'lucide-react';
 
@@ -63,8 +65,8 @@ export default function ProjectDetailsPage() {
   const projectId = (Array.isArray(rawId) ? rawId[0] : rawId) || '';
   const { user, currentCompany, canCreateSnag, canEditSnag, canChangeStatus, canDeleteSnag } = useAuth();
   
-  // Tabs State: 'checklist' | 'documents'
-  const [activeTab, setActiveTab] = useState<'checklist' | 'documents'>('checklist');
+  // Tabs State: 'checklist' | 'structure' | 'templates' | 'documents' | 'settings'
+  const [activeTab, setActiveTab] = useState<'checklist' | 'structure' | 'templates' | 'documents' | 'settings'>('checklist');
 
   // Data State
   const [project, setProject] = useState<Project | null>(null);
@@ -567,7 +569,7 @@ export default function ProjectDetailsPage() {
       )}
 
       {/* 3. Primary Workspace Tabs */}
-      <div className="flex gap-4 border-b border-border">
+      <div className="flex flex-wrap gap-4 border-b border-border">
         <button
           onClick={() => setActiveTab('checklist')}
           className={`pb-3 font-bold text-xs uppercase tracking-wider border-b-2 transition-all ${
@@ -575,6 +577,22 @@ export default function ProjectDetailsPage() {
           }`}
         >
           Audit Checklist ({filteredItems.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('structure')}
+          className={`pb-3 font-bold text-xs uppercase tracking-wider border-b-2 transition-all ${
+            activeTab === 'structure' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Project Structure ({nodes.length} Nodes)
+        </button>
+        <button
+          onClick={() => setActiveTab('templates')}
+          className={`pb-3 font-bold text-xs uppercase tracking-wider border-b-2 transition-all ${
+            activeTab === 'templates' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Assigned Templates
         </button>
         <button
           onClick={() => setActiveTab('documents')}
@@ -768,7 +786,7 @@ export default function ProjectDetailsPage() {
             </div>
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'documents' ? (
         // --- 5. Project Document Vault View ---
         <div className="space-y-4 animate-in fade-in duration-200">
           <div className="flex justify-between items-center bg-card border border-border p-4 rounded-2xl shadow-sm">
@@ -859,7 +877,96 @@ export default function ProjectDetailsPage() {
             </div>
           </div>
         </div>
-      )}
+      ) : activeTab === 'structure' ? (
+        <div className="space-y-5 animate-in fade-in duration-150">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-card border border-border rounded-2xl shadow-sm">
+            <div>
+              <h3 className="text-sm font-extrabold text-foreground">Project Location Hierarchy & Nodes</h3>
+              <p className="text-xs text-muted-foreground">Level Structure: <strong>{(project.level_structure || ['Block', 'Villa']).join(' ➔ ')}</strong></p>
+            </div>
+
+            <button
+              onClick={() => {
+                const res = dbService.generateProjectStructure(project.id);
+                alert(`Generated ${res.villaCount} Villas, ${res.unitCount} Units, ${res.roomCount} Rooms, and ${res.facilityCount} Common Facilities!`);
+                loadData();
+              }}
+              className="px-4 py-2.5 bg-primary text-primary-foreground font-extrabold text-xs rounded-xl shadow-md hover:bg-primary/90 transition-all flex items-center gap-2"
+            >
+              <Zap className="w-4 h-4 fill-current" />
+              Generate 30 Villas, 120 Units & Rooms (1-Click)
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="p-3 bg-card border border-border rounded-xl">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase block">Level 1 (Villas / Blocks):</span>
+              <span className="text-lg font-black text-foreground">{nodes.filter(n => n.parent_id === null && n.node_type !== 'Facility').length} Nodes</span>
+            </div>
+
+            <div className="p-3 bg-card border border-border rounded-xl">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase block">Level 2 (Units):</span>
+              <span className="text-lg font-black text-foreground">{nodes.filter(n => n.node_type === (project.level_structure[1] || 'Unit')).length} Nodes</span>
+            </div>
+
+            <div className="p-3 bg-card border border-border rounded-xl">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase block">Level 3 (Rooms):</span>
+              <span className="text-lg font-black text-foreground">{nodes.filter(n => n.node_type === (project.level_structure[2] || 'Room/Area')).length} Nodes</span>
+            </div>
+
+            <div className="p-3 bg-card border border-border rounded-xl">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase block">Common Facilities:</span>
+              <span className="text-lg font-black text-foreground">{nodes.filter(n => n.node_type === 'Facility').length} Nodes</span>
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'templates' ? (
+        <div className="space-y-5 animate-in fade-in duration-150">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-card border border-border rounded-2xl shadow-sm">
+            <div>
+              <h3 className="text-sm font-extrabold text-foreground">Assigned Master QC Templates</h3>
+              <p className="text-xs text-muted-foreground">QC Checkpoints assigned to rooms and spaces in this project.</p>
+            </div>
+
+            <button
+              onClick={() => {
+                const res = dbService.generateProjectChecklists(project.id);
+                alert(`Generated ${res.itemsCreated} Inspection Checkpoints across all project rooms!`);
+                loadData();
+              }}
+              className="px-4 py-2.5 bg-success text-success-foreground font-extrabold text-xs rounded-xl shadow-md hover:bg-success/90 transition-all flex items-center gap-2"
+            >
+              <Sparkles className="w-4 h-4" />
+              Generate Inspection Checklists (1-Click)
+            </button>
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-muted/50 border-b border-border font-bold text-muted-foreground uppercase">
+                <tr>
+                  <th className="px-4 py-3">Audit Item / Checklist</th>
+                  <th className="px-4 py-3">Category</th>
+                  <th className="px-4 py-3">Checkpoints</th>
+                  <th className="px-4 py-3">Version</th>
+                  <th className="px-4 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border font-medium">
+                {categories.slice(0, 8).map((cat, idx) => (
+                  <tr key={cat.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3 font-bold text-foreground">Standard {cat.name} QC Checklist Suite</td>
+                    <td className="px-4 py-3"><span className="px-2 py-0.5 rounded bg-primary/10 text-primary font-semibold">{cat.name}</span></td>
+                    <td className="px-4 py-3 font-bold text-foreground">12 Checkpoints</td>
+                    <td className="px-4 py-3 text-muted-foreground">v2.1</td>
+                    <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full bg-success/15 text-success font-bold text-[10px] uppercase">Assigned</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
         </div>
       </div>
 

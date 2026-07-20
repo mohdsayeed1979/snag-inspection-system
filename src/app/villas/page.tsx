@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { dbService, Project, ProjectNode } from '@/lib/db';
 import { useAuth } from '@/context/AuthContext';
+import { ProjectWizardModal } from '@/components/project-wizard-modal';
 import { 
   Search, 
   Building2, 
@@ -25,7 +26,8 @@ import {
   AlertTriangle,
   ShieldCheck,
   CheckCircle2,
-  FileText
+  FileText,
+  Wand2
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -40,6 +42,7 @@ export default function ProjectsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   // Modal / Add Project form state
+  const [showWizardModal, setShowWizardModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -245,13 +248,23 @@ export default function ProjectsPage() {
           <p className="text-sm text-muted-foreground">Manage multi-tenant inspection projects, structural levels, and project lifecycle controls.</p>
         </div>
 
-        <button 
-          onClick={() => { resetForm(); setShowAddModal(true); }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-bold text-xs rounded-xl shadow-md hover:bg-primary/90 transition-all self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Create New Project
-        </button>
+        <div className="flex items-center gap-3 self-start md:self-auto">
+          <button 
+            onClick={() => setShowWizardModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary to-accent text-primary-foreground font-black text-xs rounded-xl shadow-lg hover:brightness-110 transition-all"
+          >
+            <Wand2 className="w-4 h-4" />
+            Launch 5-Min Project Setup Wizard
+          </button>
+
+          <button 
+            onClick={() => { resetForm(); setShowAddModal(true); }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-card border border-border text-foreground font-bold text-xs rounded-xl hover:bg-muted transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Manual Create
+          </button>
+        </div>
       </div>
 
       {/* 2. Search & Filters Bar */}
@@ -654,6 +667,11 @@ export default function ProjectsPage() {
         </div>
       )}
 
+      {/* Project Setup Wizard Modal */}
+      <ProjectWizardModal 
+        isOpen={showWizardModal}
+        onClose={() => { setShowWizardModal(false); loadData(); }}
+      />
     </div>
   );
 }
