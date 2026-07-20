@@ -785,17 +785,20 @@ export default function ProjectDetailsPage() {
 
               {/* Room Filter Tabs (Requirement 1 & 3) */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-border/60">
-                {['All', 'Kitchen', 'Bedroom', 'Bathroom', 'Entrance', 'Hall', 'Balcony', 'Electrical DB'].map(rName => {
+                {['All', 'Entrance', 'Hall', 'Bedroom 1', 'Bedroom 2', 'Kitchen', 'Bathroom 1', 'Bathroom 2', 'Balcony', 'Electrical DB'].map(rName => {
                   const matchCp = (c: RoomCheckpoint) => {
                     if (rName === 'All') return true;
                     const fLower = rName.toLowerCase();
                     const catLower = (c.category_name || '').toLowerCase();
                     const itemLower = (c.audit_item || '').toLowerCase();
                     if (itemLower.includes(fLower) || catLower.includes(fLower)) return true;
-                    if (fLower === 'entrance' && (catLower.includes('door') || itemLower.includes('door') || itemLower.includes('threshold') || itemLower.includes('intercom'))) return true;
-                    if (fLower === 'kitchen' && (catLower.includes('kitchen') || itemLower.includes('cabinet') || itemLower.includes('sink') || itemLower.includes('mixer') || itemLower.includes('countertop'))) return true;
-                    if (fLower === 'bedroom' && (catLower.includes('furniture') || catLower.includes('paint') || itemLower.includes('wardrobe') || itemLower.includes('bed') || itemLower.includes('paint'))) return true;
-                    if (fLower === 'bathroom' && (catLower.includes('plumbing') || catLower.includes('bathroom') || itemLower.includes('basin') || itemLower.includes('toilet') || itemLower.includes('shower') || itemLower.includes('waterproofing') || itemLower.includes('mirror'))) return true;
+                    if (fLower.includes('entrance') && (catLower.includes('door') || itemLower.includes('door') || itemLower.includes('threshold') || itemLower.includes('intercom'))) return true;
+                    if (fLower.includes('kitchen') && (catLower.includes('kitchen') || catLower.includes('joinery') || itemLower.includes('cabinet') || itemLower.includes('sink') || itemLower.includes('mixer') || itemLower.includes('countertop'))) return true;
+                    if (fLower.includes('bedroom') && (catLower.includes('furniture') || catLower.includes('joinery') || catLower.includes('paint') || itemLower.includes('wardrobe') || itemLower.includes('bed') || itemLower.includes('headboard'))) return true;
+                    if (fLower.includes('bathroom') && (catLower.includes('plumbing') || catLower.includes('sanitary') || catLower.includes('shower') || catLower.includes('bathroom') || itemLower.includes('basin') || itemLower.includes('toilet') || itemLower.includes('shower') || itemLower.includes('waterproofing') || itemLower.includes('mirror'))) return true;
+                    if (fLower.includes('hall') && (catLower.includes('paint') || catLower.includes('electrical') || catLower.includes('lighting') || catLower.includes('flooring') || catLower.includes('windows') || catLower.includes('doors'))) return true;
+                    if (fLower.includes('balcony') && (catLower.includes('doors') || catLower.includes('civil') || itemLower.includes('railing') || itemLower.includes('weatherproof'))) return true;
+                    if (fLower.includes('electrical db') && (catLower.includes('electrical') || itemLower.includes('distribution board') || itemLower.includes('circuit breaker'))) return true;
                     return false;
                   };
 
@@ -832,10 +835,13 @@ export default function ProjectDetailsPage() {
                     const catLower = (c.category_name || '').toLowerCase();
                     const itemLower = (c.audit_item || '').toLowerCase();
                     if (itemLower.includes(fLower) || catLower.includes(fLower)) return true;
-                    if (fLower === 'entrance' && (catLower.includes('door') || itemLower.includes('door') || itemLower.includes('threshold') || itemLower.includes('intercom'))) return true;
-                    if (fLower === 'kitchen' && (catLower.includes('kitchen') || itemLower.includes('cabinet') || itemLower.includes('sink') || itemLower.includes('mixer') || itemLower.includes('countertop'))) return true;
-                    if (fLower === 'bedroom' && (catLower.includes('furniture') || catLower.includes('paint') || itemLower.includes('wardrobe') || itemLower.includes('bed') || itemLower.includes('paint'))) return true;
-                    if (fLower === 'bathroom' && (catLower.includes('plumbing') || catLower.includes('bathroom') || itemLower.includes('basin') || itemLower.includes('toilet') || itemLower.includes('shower') || itemLower.includes('waterproofing') || itemLower.includes('mirror'))) return true;
+                    if (fLower.includes('entrance') && (catLower.includes('door') || itemLower.includes('door') || itemLower.includes('threshold') || itemLower.includes('intercom'))) return true;
+                    if (fLower.includes('kitchen') && (catLower.includes('kitchen') || catLower.includes('joinery') || itemLower.includes('cabinet') || itemLower.includes('sink') || itemLower.includes('mixer') || itemLower.includes('countertop'))) return true;
+                    if (fLower.includes('bedroom') && (catLower.includes('furniture') || catLower.includes('joinery') || catLower.includes('paint') || itemLower.includes('wardrobe') || itemLower.includes('bed') || itemLower.includes('headboard'))) return true;
+                    if (fLower.includes('bathroom') && (catLower.includes('plumbing') || catLower.includes('sanitary') || catLower.includes('shower') || catLower.includes('bathroom') || itemLower.includes('basin') || itemLower.includes('toilet') || itemLower.includes('shower') || itemLower.includes('waterproofing') || itemLower.includes('mirror'))) return true;
+                    if (fLower.includes('hall') && (catLower.includes('paint') || catLower.includes('electrical') || catLower.includes('lighting') || catLower.includes('flooring') || catLower.includes('windows') || catLower.includes('doors'))) return true;
+                    if (fLower.includes('balcony') && (catLower.includes('doors') || catLower.includes('civil') || itemLower.includes('railing') || itemLower.includes('weatherproof'))) return true;
+                    if (fLower.includes('electrical db') && (catLower.includes('electrical') || itemLower.includes('distribution board') || itemLower.includes('circuit breaker'))) return true;
                     return false;
                   })
                   .map((cp) => {
