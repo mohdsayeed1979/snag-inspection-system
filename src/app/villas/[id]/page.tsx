@@ -195,14 +195,23 @@ export default function ProjectDetailsPage() {
       
       setNodes(allNodes);
       
-      // Determine active node ID
+      // Determine active node ID (Check URL param or saved active node)
       let targetNodeId = initialNodeId || currentNodeId;
+      if (!targetNodeId && typeof window !== 'undefined') {
+        const savedNode = localStorage.getItem(`snaglist_active_node_${currentProj.id}`);
+        if (savedNode && allNodes.some(n => n.id === savedNode)) {
+          targetNodeId = savedNode;
+        }
+      }
       if (!targetNodeId) {
         const roots = allNodes.filter(n => n.parent_id === null);
         if (roots.length > 0) {
           targetNodeId = roots[0].id;
-          setCurrentNodeId(targetNodeId);
         }
+      }
+
+      if (targetNodeId) {
+        setCurrentNodeId(targetNodeId);
       }
 
       // Load Document Vault files
@@ -234,14 +243,22 @@ export default function ProjectDetailsPage() {
   }, [projectId, currentCompany]);
 
   useEffect(() => {
-    if (currentNodeId) {
-      setRoomCheckpoints(dbService.getRoomCheckpoints(currentNodeId));
+    if (currentNodeId && projectId) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`snaglist_active_node_${projectId}`, currentNodeId);
+      }
+      const roomCps = dbService.getRoomCheckpoints(currentNodeId);
+      setRoomCheckpoints(roomCps.length > 0 ? roomCps : dbService.getProjectCheckpoints(projectId));
+      setSelectedRoomFilter('All');
     }
-  }, [currentNodeId]);
+  }, [currentNodeId, projectId]);
 
   const handleMarkPass = (cpId: string) => {
     dbService.markCheckpoint(cpId, 'pass', undefined, user || undefined);
-    if (currentNodeId) setRoomCheckpoints(dbService.getRoomCheckpoints(currentNodeId));
+    if (currentNodeId) {
+      const roomCps = dbService.getRoomCheckpoints(currentNodeId);
+      setRoomCheckpoints(roomCps.length > 0 ? roomCps : dbService.getProjectCheckpoints(projectId));
+    }
     loadData();
   };
 

@@ -2120,8 +2120,14 @@ export const dbService = {
       safeSetItem('snaglist_templates', templates);
     }
 
-    const existingCheckpoints = safeParseList<RoomCheckpoint>('snaglist_checkpoints').filter(c => c.project_id !== projectId);
-    const newCheckpoints: RoomCheckpoint[] = [];
+    const existingCheckpoints = safeParseList<RoomCheckpoint>('snaglist_checkpoints');
+    const existingMap = new Map<string, RoomCheckpoint>();
+    existingCheckpoints.forEach(c => {
+      existingMap.set(`${c.node_id}-${c.audit_item}`, c);
+    });
+
+    const otherProjectCheckpoints = existingCheckpoints.filter(c => c.project_id !== projectId);
+    const updatedProjectCheckpoints: RoomCheckpoint[] = [];
     let counter = 1;
 
     const DEFAULT_ROOM_CHECKPOINTS: Record<string, { category: string; item: string }[]> = {
@@ -2231,17 +2237,24 @@ export const dbService = {
 
       collectedItems.forEach((cp) => {
         counter++;
-        newCheckpoints.push({
-          id: `cp-gen-${projectId}-${roomNode.id}-${counter}`,
-          project_id: projectId,
-          node_id: roomNode.id,
-          template_id: cp.templateId || activeTemplates[0]?.id || 'tpl-1bhk-core',
-          category_name: cp.category,
-          audit_item: cp.item,
-          status: counter % 7 === 0 ? 'fail' : counter % 3 === 0 ? 'pass' : 'pending',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
+        const mapKey = `${roomNode.id}-${cp.item}`;
+        const existing = existingMap.get(mapKey);
+
+        if (existing) {
+          updatedProjectCheckpoints.push(existing);
+        } else {
+          updatedProjectCheckpoints.push({
+            id: `cp-gen-${projectId}-${roomNode.id}-${counter}`,
+            project_id: projectId,
+            node_id: roomNode.id,
+            template_id: cp.templateId || activeTemplates[0]?.id || 'tpl-1bhk-core',
+            category_name: cp.category,
+            audit_item: cp.item,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
       });
     });
 
@@ -2250,12 +2263,12 @@ export const dbService = {
     const unitCount = allProjectNodes.filter(n => n.node_type === (proj.level_structure[1] || 'Unit')).length;
     const roomCount = allRoomNodes.length;
 
-    safeSetItem('snaglist_checkpoints', [...existingCheckpoints, ...newCheckpoints]);
+    safeSetItem('snaglist_checkpoints', [...otherProjectCheckpoints, ...updatedProjectCheckpoints]);
     
-    console.log(`[QA/QC Generator] Generated ${newCheckpoints.length} Checkpoints across ${roomCount} Rooms (${villaCount} Villas, ${unitCount} Units).`);
+    console.log(`[QA/QC Generator] Generated ${updatedProjectCheckpoints.length} Checkpoints across ${roomCount} Rooms (${villaCount} Villas, ${unitCount} Units).`);
     
     return { 
-      itemsCreated: newCheckpoints.length,
+      itemsCreated: updatedProjectCheckpoints.length,
       villaCount: villaCount || 30,
       unitCount: unitCount || 120,
       roomCount: roomCount || 920,
